@@ -124,7 +124,23 @@ El riesgo real de este proceso no es que falle la compilación: es que
 bastantes casos reportados de modelos YOLOv8 custom que compilan perfecto y
 después no detectan casi nada en la Pi.
 
-Por eso la verificación está en dos etapas:
+### Paso cero: que el runtime pueda leer el archivo
+
+Antes que nada, apenas el `.hef` esté en la Raspberry:
+
+```bash
+hailortcli parse-hef model/yolov8npareysemaforo.hef
+```
+
+Tarda segundos. Si el runtime puede leerlo, imprime la estructura de la red.
+Si el `.hef` se compiló con un DFC de otra versión, falla acá mismo con
+`Unsupported hef version` o `HAILO_INVALID_HEF(26)` — y te ahorrás descubrirlo
+con el robot en la pista.
+
+Esta falla es *ruidosa*: o carga o no carga. No la confundas con la pérdida
+por cuantización, que es silenciosa y necesita las dos etapas de abajo.
+
+### Las dos etapas de verificación de precisión
 
 1. **En Colab** (paso 5 del notebook): compara el modelo original contra el ya
    cuantizado, usando el emulador del DFC. Detecta el problema sin necesidad
