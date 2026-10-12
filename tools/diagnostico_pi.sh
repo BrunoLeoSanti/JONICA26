@@ -9,6 +9,9 @@
 # Si lo guardaste suelto, tambien sirve:
 #   curl -sL https://raw.githubusercontent.com/BrunoLeoSanti/JONICA26/main/tools/diagnostico_pi.sh | bash
 
+# pygame imprime un banner al importarse y ensucia la salida.
+export PYGAME_HIDE_SUPPORT_PROMPT=1
+
 titulo() { printf '\n\033[1m=== %s ===\033[0m\n' "$1"; }
 ok()     { printf '  [OK]    %s\n' "$1"; }
 falta()  { printf '  [FALTA] %s\n' "$1"; }
@@ -65,7 +68,9 @@ if [ -f "$CFG" ]; then
   if grep -qE '^\s*dtparam=pciex1' "$CFG"; then
     grep -E '^\s*dtparam=pciex1' "$CFG" | sed 's/^/  /'
   else
-    info "" "sin dtparam=pciex1 (puede estar en Gen2 por defecto)"
+    info "" "sin dtparam=pciex1 -> el enlace PCIe corre en Gen2"
+    echo "          El AI HAT+ aprovecha Gen3. Para habilitarlo:"
+    echo "            echo 'dtparam=pciex1_gen=3' | sudo tee -a $CFG"
   fi
 else
   info "config.txt:" "no encontrado"
@@ -128,7 +133,7 @@ info "Ejecutable:" "$(command -v python3)"
 titulo "Modulos de Python"
 for m in hailo_platform picamera2 gpiozero lgpio numpy PIL pygame; do
   if python3 -c "import $m" 2>/dev/null; then
-    V=$(python3 -c "import $m;print(getattr($m,'__version__',''))" 2>/dev/null)
+    V=$(python3 -c "import $m;print(getattr($m,'__version__',''))" 2>/dev/null | head -1)
     ok "$m ${V:+($V)}"
   else
     falta "$m"
