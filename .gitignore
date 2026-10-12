@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Artefactos intermedios de la conversion del modelo: se regeneran con el
+# notebook y no tiene sentido versionarlos.
+*.onnx
+*.har
+*.npy
+calib/
+
+.DS_Store
+.vscode/

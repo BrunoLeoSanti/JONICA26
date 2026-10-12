@@ -1,0 +1,17 @@
+# Dependencias de la Raspberry Pi 5.
+#   pip install -r requirements.txt
+#
+# OJO: estas NO son todas. Dos paquetes clave se instalan por apt, no por pip:
+#
+#   sudo apt install hailo-all      # HailoRT + driver PCIe del AI HAT+
+#   sudo apt install python3-picamera2
+#
+# Ver docs/instalacion-pi5.md para el procedimiento completo.
+
+numpy>=1.24
+gpiozero>=2.0
+lgpio>=0.2.2.0      # backend de gpiozero para Pi 5 (el RP1)
+
+# Solo para deteccion_hailo_preview.py (la version con ventana):
+pillow>=10.0
+pygame>=2.5
