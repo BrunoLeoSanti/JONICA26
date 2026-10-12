@@ -2,6 +2,17 @@
 
 Procedimiento completo desde una Pi recién formateada hasta el robot andando.
 
+> **¿No sabés qué tenés instalado?** Corré el diagnóstico antes de empezar.
+> Sólo lee información, no instala ni modifica nada:
+>
+> ```bash
+> bash tools/diagnostico_pi.sh
+> ```
+>
+> Te dice el modelo de Pi, la versión del sistema, si el acelerador se ve en
+> el bus PCIe, qué paquetes faltan y —lo más importante— si tu placa es
+> `HAILO8` o `HAILO8L`.
+
 ## 1. Sistema operativo
 
 **Raspberry Pi OS Bookworm de 64 bits.** La versión de 32 bits no sirve: el
