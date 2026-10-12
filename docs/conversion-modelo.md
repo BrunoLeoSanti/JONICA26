@@ -43,6 +43,25 @@ El compilador no está en PyPI. Se baja de la
 gratuita. **Este paso no se puede automatizar**: la descarga está detrás del
 login. Bajá el `.whl` para Python 3.10 y subilo al notebook.
 
+### La versión del compilador tiene que coincidir con la del runtime
+
+Un `.hef` compilado con un DFC de otra generación **no carga** en el
+acelerador. Mirá qué runtime tenés instalado en la Pi:
+
+```bash
+hailortcli fw-control identify     # campo "Firmware Version"
+```
+
+| HailoRT en la Pi | DFC a bajar |
+|---|---|
+| 4.23.x | **3.33.x** |
+| 4.22.x | 3.32.x |
+| 4.21.x | 3.31.x |
+
+**La línea DFC 5.x no sirve acá**: es para Hailo-10H y Hailo-15. Es la que
+aparece primero en la Developer Zone por ser la más nueva, así que es un error
+fácil de cometer. Para Hailo-8 y Hailo-8L va la línea 3.x.
+
 ## Por qué el NMS va adentro del `.hef`
 
 El modelo exportado a ONNX **no lleva NMS**. El NMS se agrega en la
