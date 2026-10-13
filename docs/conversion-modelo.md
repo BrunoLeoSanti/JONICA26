@@ -52,11 +52,16 @@ acelerador. Mirá qué runtime tenés instalado en la Pi:
 hailortcli fw-control identify     # campo "Firmware Version"
 ```
 
-| HailoRT en la Pi | DFC a bajar |
-|---|---|
-| 4.23.x | **3.33.x** |
-| 4.22.x | 3.32.x |
-| 4.21.x | 3.31.x |
+| HailoRT en la Pi | DFC | Model Zoo |
+|---|---|---|
+| **4.23.x** (el nuestro) | **3.33.x** | **v2.18** |
+| 4.24.x | 3.34.x | v2.19.1 |
+
+**El Model Zoo también hay que fijarlo.** Tiene dos líneas en paralelo: la
+**2.x** para Hailo-8 y 8L, y la **5.x** para Hailo-10H y Hailo-15. Instalar
+desde la rama principal del repo trae la 5.x, que ya no soporta Hailo-8 — y
+entonces la compilación falla al instante con un error que no menciona el
+motivo real.
 
 **La línea DFC 5.x no sirve acá**: es para Hailo-10H y Hailo-15. Es la que
 aparece primero en la Developer Zone por ser la más nueva, así que es un error
