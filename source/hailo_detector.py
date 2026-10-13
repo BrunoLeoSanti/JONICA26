@@ -23,14 +23,21 @@ def parsear_salida_nms(
 ) -> List[Deteccion]:
     """Convierte la salida NMS de HailoRT en una lista de `Deteccion`.
 
-    HailoRT entrega, para un .hef con NMS incluido, una lista con un array por
-    clase. Cada array tiene forma (N, 5) con filas:
+    Para un .hef con NMS incluido se recibe un array por clase, con los campos
 
         [y_min, x_min, y_max, x_max, score]
 
-    en coordenadas normalizadas 0-1. Notar que el orden es *yxyx*, no xyxy:
-    invertirlo es un error silencioso clasico, por eso se traduce aca y una
-    sola vez.
+    en coordenadas normalizadas 0-1. Dos cosas que hay que mirar con cuidado:
+
+    1. El orden de las coordenadas es *yxyx*, no xyxy. Invertirlo no da error:
+       da cajas dibujadas en el lugar equivocado. Se traduce aca, una sola vez.
+
+    2. **La disposicion del array varia.** Segun de donde venga puede ser
+       `(N, 5)` -- una deteccion por fila -- o `(5, max_det)` -- un campo por
+       fila, con columnas de ceros como relleno. El emulador del Dataflow
+       Compiler devuelve la segunda. Leer una como si fuera la otra no falla:
+       devuelve cero detecciones, que es indistinguible de "el modelo no
+       detecta nada". Por eso se detecta la forma en vez de asumirla.
 
     Esta funcion es pura y no toca el hardware, asi que se puede testear sin
     Raspberry ni acelerador (ver tests/test_hailo_detector.py).
@@ -46,7 +53,19 @@ def parsear_salida_nms(
     for indice_clase, cajas in enumerate(salida):
         if cajas is None or len(cajas) == 0:
             continue
-        for fila in cajas:
+
+        arr = np.asarray(cajas, dtype=np.float32)
+        if arr.ndim != 2:
+            continue
+
+        # (5, max_det) -> (max_det, 5). El caso (5, 5) es ambiguo, pero se
+        # interpreta como 5 detecciones de 5 campos, que es lo habitual.
+        if arr.shape[1] != 5 and arr.shape[0] == 5:
+            arr = arr.T
+        if arr.shape[1] < 5:
+            continue
+
+        for fila in arr:
             y1, x1, y2, x2, score = (float(v) for v in fila[:5])
             if score < conf_minima:
                 continue

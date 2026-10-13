@@ -76,3 +76,52 @@ def test_mas_clases_en_la_salida_que_etiquetas_no_explota():
     salida = [np.zeros((0, 5), dtype=np.float32) for _ in range(80)]
     with pytest.raises(ValueError, match="clases"):
         parsear_salida_nms(salida, ETIQUETAS)
+
+
+# --- Disposicion transpuesta -------------------------------------------------
+# El emulador del Dataflow Compiler entrega (5, max_det) en vez de (N, 5):
+# un campo por fila y una deteccion por columna, con relleno de ceros. Leerlo
+# como si fuera (N, 5) no da error, da cero detecciones -- indistinguible de
+# "el modelo no detecta nada".
+
+def test_acepta_la_disposicion_transpuesta():
+    """(5, max_det): cada COLUMNA es una deteccion."""
+    arr = np.zeros((5, 100), dtype=np.float32)
+    arr[:, 0] = [0.1, 0.2, 0.5, 0.6, 0.87]   # y1, x1, y2, x2, score
+    salida = [arr, np.zeros((5, 100), dtype=np.float32)]
+
+    dets = parsear_salida_nms(salida, ETIQUETAS, conf_minima=0.25)
+    assert len(dets) == 1
+    assert dets[0].nombre == "PARE"
+    assert dets[0].confianza == pytest.approx(0.87, abs=1e-6)
+    assert dets[0].bbox == pytest.approx((0.2, 0.1, 0.6, 0.5), abs=1e-6)
+
+
+def test_el_relleno_de_la_transpuesta_no_cuenta():
+    """Las columnas vacias son relleno, no detecciones de score cero."""
+    arr = np.zeros((5, 100), dtype=np.float32)
+    arr[:, 0] = [0.1, 0.1, 0.2, 0.2, 0.9]
+    arr[:, 1] = [0.3, 0.3, 0.4, 0.4, 0.8]
+    dets = parsear_salida_nms([arr, np.zeros((5, 100), dtype=np.float32)],
+                              ETIQUETAS, conf_minima=0.25)
+    assert len(dets) == 2
+
+
+def test_varias_detecciones_transpuestas_en_ambas_clases():
+    a = np.zeros((5, 100), dtype=np.float32)
+    a[:, 0] = [0.0, 0.0, 0.1, 0.1, 0.6]
+    b = np.zeros((5, 100), dtype=np.float32)
+    b[:, 0] = [0.5, 0.5, 0.9, 0.9, 0.7]
+    dets = parsear_salida_nms([a, b], ETIQUETAS, conf_minima=0.25)
+    assert sorted(d.nombre for d in dets) == ["PARE", "semaforoverde"]
+
+
+def test_la_disposicion_normal_sigue_funcionando():
+    """No romper el formato (N, 5) al agregar soporte para el transpuesto."""
+    salida = [
+        np.array([[0.1, 0.2, 0.5, 0.6, 0.9]], dtype=np.float32),
+        np.zeros((0, 5), dtype=np.float32),
+    ]
+    dets = parsear_salida_nms(salida, ETIQUETAS)
+    assert len(dets) == 1
+    assert dets[0].bbox == pytest.approx((0.2, 0.1, 0.6, 0.5), abs=1e-6)
