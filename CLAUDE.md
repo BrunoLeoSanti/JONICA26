@@ -244,6 +244,7 @@ arduino/lineaydeteccion/       Sketch del PID. NO SE TOCÓ desde 2025.
 model/                         .pt, labels.txt, y el .hef cuando exista
 tools/
   conversion_pt_a_hef.ipynb    Notebook de Colab (.pt -> .hef)
+                               Abrir: https://colab.research.google.com/github/BrunoLeoSanti/JONICA26/blob/main/tools/conversion_pt_a_hef.ipynb
   verificar_hef.py             Mide pérdida por cuantización (corre en la Pi)
   diagnostico_pi.sh            Qué hay instalado en la Pi (solo lectura)
 tests/                         Tests de lógica pura

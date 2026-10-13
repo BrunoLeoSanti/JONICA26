@@ -3,9 +3,14 @@
 El acelerador Hailo no ejecuta PyTorch ni ONNX. Corre un formato propio,
 `.hef`, que hay que generar antes de poder usar el modelo en el robot.
 
-El procedimiento ejecutable está en **[`tools/conversion_pt_a_hef.ipynb`](../tools/conversion_pt_a_hef.ipynb)**
-(notebook de Google Colab). Este documento explica el *por qué* de cada paso,
-que es lo que el notebook no puede contar mientras corre.
+El procedimiento ejecutable es el notebook
+[`tools/conversion_pt_a_hef.ipynb`](../tools/conversion_pt_a_hef.ipynb):
+
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/BrunoLeoSanti/JONICA26/blob/main/tools/conversion_pt_a_hef.ipynb)
+
+Ese botón abre siempre la última versión del repo. Este documento explica el
+*por qué* de cada paso, que es lo que el notebook no puede contar mientras
+corre.
 
 ## El camino
 

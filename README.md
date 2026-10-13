@@ -117,9 +117,11 @@ YOLOv8n entrenado sobre un dataset propio de **2 clases**: `PARE` y
 El modelo entrenado es el mismo de 2025. Lo que cambia es el formato en el que
 se ejecuta: antes NCNN sobre CPU, ahora HEF sobre el Hailo-8.
 
-Para regenerar el `.hef` desde el `.pt`:
-**[`tools/conversion_pt_a_hef.ipynb`](tools/conversion_pt_a_hef.ipynb)**
-(notebook de Colab), explicado en
+Para regenerar el `.hef` desde el `.pt`, abrí el notebook en Colab:
+
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/BrunoLeoSanti/JONICA26/blob/main/tools/conversion_pt_a_hef.ipynb)
+
+El procedimiento está explicado en
 [`docs/conversion-modelo.md`](docs/conversion-modelo.md).
 
 > El compilador de Hailo corre sólo en **Linux x86_64 con AVX**: no funciona en
