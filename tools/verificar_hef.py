@@ -14,7 +14,7 @@ el modelo detecta algo razonable.
 
 Uso:
     python3 tools/verificar_hef.py --imagenes docs/muestras/
-    python3 tools/verificar_hef.py --imagenes docs/muestras/ --referencia referencia_pt.json
+    python3 tools/verificar_hef.py --imagenes docs/muestras/ --referencia docs/referencia_pt.json
 """
 import argparse
 import json

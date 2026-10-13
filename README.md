@@ -206,7 +206,7 @@ silenciosos del tipo "compila pero no detecta".
 Lo que sí necesita hardware se verifica en la Pi:
 
 ```bash
-python3 tools/verificar_hef.py --imagenes docs/muestras/ --referencia referencia_pt.json
+python3 tools/verificar_hef.py --imagenes docs/muestras/ --referencia docs/referencia_pt.json
 ```
 
 ---
@@ -217,7 +217,9 @@ python3 tools/verificar_hef.py --imagenes docs/muestras/ --referencia referencia
 - [x] Integración con el AI HAT+ (Hailo-8)
 - [x] Pipeline de conversión `.pt` → `.hef`
 - [x] Verificación de pérdida por cuantización
-- [ ] Compilar el `.hef` definitivo y medirlo
+- [x] `.hef` compilado y medido — recall 100 %, precisión 96.2 %
+- [ ] Verificar sobre el acelerador real en la Pi
+- [ ] Pruebas con la cámara en vivo
 - [ ] Pruebas en pista
 - [ ] Fotos, videos y póster 2026
 

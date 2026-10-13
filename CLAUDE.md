@@ -102,19 +102,20 @@ puede compilar modelos para Hailo (ver más abajo).
   `hailort` 4.23.0, `/dev/hailo0` presente, `hailortcli` reporta `HAILO8`,
   PCIe en Gen 3, firmware actualizado, cámara funcionando.
 
-### En curso
-
-**Conversión del modelo `.pt` → `.hef`** en Google Colab, con el notebook
-`tools/conversion_pt_a_hef.ipynb`. DFC **3.33.1** ya descargado y el entorno
-del paso 1 ya montado. **Van por el paso 2: exportar el `.pt` a ONNX.**
-
-Faltan los pasos 3 (calibración desde Roboflow), 4 (compilación),
-5 (verificación de cuantización) y 6 (descarga).
+- **Modelo convertido a `.hef`** y versionado en
+  `model/yolov8npareysemaforo.hef`. Compilado con DFC 3.33.1 + Model Zoo v2.18
+  para target `hailo8`. Verificado contra el `.pt` original en el emulador del
+  DFC sobre 42 imágenes que no se usaron para calibrar: **recall 100 %,
+  precisión 96.2 %**.
+- Set de verificación versionado en `docs/muestras/` (42 imágenes) con
+  `docs/referencia_pt.json` (las detecciones del `.pt`), para poder repetir la
+  medición cuando se quiera.
 
 ### Pendiente
 
-- Generar el `.hef` y ponerlo en `model/yolov8npareysemaforo.hef`.
-- Probar con cámara real en la Pi.
+- Verificar el `.hef` sobre el acelerador real:
+  `hailortcli parse-hef` y después `tools/verificar_hef.py`.
+- Probar con la cámara en vivo.
 - Pruebas en pista; medir FPS, distancia de frenado y tasa de detección.
 - Completar las secciones de resultados y galería del README.
 - Fotos, videos y póster 2026.
@@ -188,11 +189,37 @@ Criterio: recall ≥ 90 % respecto del `.pt` → OK. Entre 75 y 90 % → probar 
 cuidado. Menos de 75 % → recompilar con más imágenes de calibración o un set
 más representativo de la pista.
 
-### 5. `hailo8` y `hailo8l` no son intercambiables
+### 5. El Model Zoo también tiene dos líneas, y la default es la equivocada
+
+`pip install git+.../hailo_model_zoo.git` trae la **5.x**, que es para
+Hailo-10H y Hailo-15 y **ya no soporta Hailo-8**: `--hw-arch hailo8` ni
+figura entre las opciones válidas. Hay que fijar **v2.18**, que es la que
+corresponde a DFC 3.33 + HailoRT 4.23. Además hay que instalarla clonando el
+tag y con `--no-build-isolation`, porque desde la URL `git+` falla al
+construir.
+
+Un detalle más: el Model Zoo importa todos sus backends de inferencia al
+arrancar, y el de torch espera una clase que DFC 3.33 no tiene. Hay que sacar
+`core/infer/torch_infer.py` del escaneo. No se pierde nada: la calibración
+usa `SimulationInferenceModel`, que sí está.
+
+### 6. La salida NMS puede venir transpuesta
+
+Un array por clase, pero la disposición varía: `(N, 5)` —una detección por
+fila— o `(5, max_det)` —un campo por fila, con columnas de ceros de relleno—.
+El emulador del DFC devuelve la segunda.
+
+Leer una como si fuera la otra **no da error: da cero detecciones**, que es
+indistinguible de "el modelo no detecta nada". Nos costó un susto: parecía
+que la cuantización había destruido el modelo con 0 % de recall, cuando en
+realidad daba 100 %. `parsear_salida_nms` ahora detecta la forma en vez de
+asumirla, y hay tests para las dos.
+
+### 7. `hailo8` y `hailo8l` no son intercambiables
 
 Este proyecto es **`hailo8`** (26 TOPS). Un `.hef` de uno no carga en el otro.
 
-### 6. El wheel del DFC se baja a mano
+### 8. El wheel del DFC se baja a mano
 
 Está detrás del login de la Hailo Developer Zone y no se puede automatizar.
 Las versiones viejas están ocultas; hay que buscarlas con el filtro de archivo

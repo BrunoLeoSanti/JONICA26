@@ -2,14 +2,29 @@
 
 | Archivo | Estado |
 |---|---|
-| `yolov8npareysemaforo.pt` | ✅ presente — modelo entrenado, heredado de JONICA25 |
-| `yolov8npareysemaforo.hef` | ⏳ **falta generarlo** |
-| `labels.txt` | ✅ presente — orden de clases, tiene que coincidir con el `.hef` |
+| `yolov8npareysemaforo.pt` | modelo entrenado, heredado de JONICA25 |
+| `yolov8npareysemaforo.hef` | compilado para **Hailo-8**, listo para usar |
+| `labels.txt` | orden de clases, tiene que coincidir con el `.hef` |
 
-## Cómo generar el `.hef`
+## El `.hef` actual
 
-El `.hef` no está versionado todavía porque hay que compilarlo. El
-procedimiento está en
+Compilado el **12 de octubre de 2026** con este stack:
+
+| | |
+|---|---|
+| Dataflow Compiler | 3.33.1 |
+| Hailo Model Zoo | v2.18 |
+| Target | `hailo8` (26 TOPS) |
+| Calibración | 64 imágenes del dataset `pareysemaforo-3` |
+| Nivel de optimización | 0 (sin GPU y con menos de 1024 imágenes) |
+
+Verificación contra el `.pt` original sobre 42 imágenes que **no** se usaron
+para calibrar: **recall 100 %, precisión 96.2 %**. La cuantización a INT8 no
+perdió detecciones.
+
+## Cómo regenerarlo
+
+El procedimiento está en
 [`../tools/conversion_pt_a_hef.ipynb`](../tools/conversion_pt_a_hef.ipynb)
 (Google Colab), explicado en
 [`../docs/conversion-modelo.md`](../docs/conversion-modelo.md).
