@@ -217,8 +217,7 @@ python3 tools/verificar_hef.py --imagenes docs/muestras/ --referencia docs/refer
 - [x] Integración con el AI HAT+ (Hailo-8)
 - [x] Pipeline de conversión `.pt` → `.hef`
 - [x] Verificación de pérdida por cuantización
-- [x] `.hef` compilado y medido — recall 100 %, precisión 96.2 %
-- [ ] Verificar sobre el acelerador real en la Pi
+- [x] `.hef` compilado y verificado sobre el Hailo-8 real — **recall 100 %, precisión 100 %**
 - [ ] Pruebas con la cámara en vivo
 - [ ] Pruebas en pista
 - [ ] Fotos, videos y póster 2026

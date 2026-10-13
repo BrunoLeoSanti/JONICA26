@@ -18,9 +18,23 @@ Compilado el **12 de octubre de 2026** con este stack:
 | Calibración | 64 imágenes del dataset `pareysemaforo-3` |
 | Nivel de optimización | 0 (sin GPU y con menos de 1024 imágenes) |
 
-Verificación contra el `.pt` original sobre 42 imágenes que **no** se usaron
-para calibrar: **recall 100 %, precisión 96.2 %**. La cuantización a INT8 no
-perdió detecciones.
+Verificado contra el `.pt` original sobre 42 imágenes que **no** se usaron
+para calibrar:
+
+| | Recall | Precisión |
+|---|---|---|
+| Emulador del DFC | 100 % | 96.2 % |
+| **Hailo-8 real** | **100 %** | **100 %** |
+
+La cuantización a INT8 no perdió una sola detección, y las confianzas se
+mantienen altas (la mayoría entre 0.95 y 1.00). El falso positivo que aparecía
+en el emulador no se reproduce en el hardware.
+
+Para repetir la medición:
+
+```bash
+python3 tools/verificar_hef.py --imagenes docs/muestras/ --referencia docs/referencia_pt.json
+```
 
 ## Cómo regenerarlo
 

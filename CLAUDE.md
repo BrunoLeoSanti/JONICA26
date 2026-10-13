@@ -111,11 +111,13 @@ puede compilar modelos para Hailo (ver más abajo).
   `docs/referencia_pt.json` (las detecciones del `.pt`), para poder repetir la
   medición cuando se quiera.
 
+- **`.hef` verificado sobre el Hailo-8 real**: `hailortcli parse-hef` lo
+  acepta, y `tools/verificar_hef.py` da **recall 100 %, precisión 100 %**
+  sobre las 42 imágenes de prueba. La conversión del modelo está cerrada.
+
 ### Pendiente
 
-- Verificar el `.hef` sobre el acelerador real:
-  `hailortcli parse-hef` y después `tools/verificar_hef.py`.
-- Probar con la cámara en vivo.
+- Probar con la cámara en vivo (`source/deteccion_hailo_preview.py`).
 - Pruebas en pista; medir FPS, distancia de frenado y tasa de detección.
 - Completar las secciones de resultados y galería del README.
 - Fotos, videos y póster 2026.
