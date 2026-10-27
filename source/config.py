@@ -45,5 +45,19 @@ FORMATO_CAMARA = "BGR888"
 # La camara va montada al reves en el chasis.
 ROTAR_PREVIEW_180 = True
 
+# --- Video por red ------------------------------------------------------------
+# deteccion_hailo_stream.py sirve el video en http://bumblebee.local:PUERTO_STREAM
+PUERTO_STREAM = 8000
+# La camara saca dos imagenes de cada cuadro: esta para el video y otra de
+# RESOLUCION para el Hailo. El sensor imx219 es 4:3; su modo 1920x1080 es un
+# recorte del centro, en cambio 1640x1232 ve el campo completo (promedia de a
+# 4 pixeles) y llega a 81 FPS. Se fuerza ese modo y se manda tal cual.
+MODO_SENSOR = (1640, 1232)
+RESOLUCION_STREAM = (1640, 1232)
+FPS_CAMARA = 30
+# La Pi 5 no tiene codificador de video por hardware: cada JPEG lo comprime la
+# CPU. Bajar la calidad alivia CPU y WiFi a costa de la imagen.
+CALIDAD_JPEG = 80
+
 # --- Loop ---------------------------------------------------------------------
 PAUSA_LOOP = 0.05  # segundos; evita saturar la CPU en el bucle principal

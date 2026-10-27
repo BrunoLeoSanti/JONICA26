@@ -240,12 +240,14 @@ source/                        Código de la Raspberry Pi 5
   gpio_control.py              Salidas hacia el Arduino (gpiozero)
   deteccion_hailo.py           Programa principal, headless, para la pista
   deteccion_hailo_preview.py   Con ventana pygame, para el banco de pruebas
+  deteccion_hailo_stream.py    Video MJPEG 1640x1232 con las cajas, en :8000 (para OBS)
 arduino/lineaydeteccion/       Sketch del PID. NO SE TOCÓ desde 2025.
 model/                         .pt, labels.txt, y el .hef cuando exista
 tools/
   conversion_pt_a_hef.ipynb    Notebook de Colab (.pt -> .hef)
                                Abrir: https://colab.research.google.com/github/BrunoLeoSanti/JONICA26/blob/main/tools/conversion_pt_a_hef.ipynb
   verificar_hef.py             Mide pérdida por cuantización (corre en la Pi)
+  registro_energia.py          CSV de voltaje, consumo, temperatura y UPS (corre en la Pi)
   diagnostico_pi.sh            Qué hay instalado en la Pi (solo lectura)
 tests/                         Tests de lógica pura
 hardware/                      Esquemático y diseños 3D
