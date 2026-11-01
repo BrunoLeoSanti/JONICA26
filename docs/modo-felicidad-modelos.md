@@ -27,7 +27,7 @@ disponible** (el servidor responde 403): por eso se empezó con `scrfd_500m`.
 
 - Entrada: `scrfd_500m/input_layer1`, UINT8, NHWC 640x640x3 (RGB).
 - Nueve salidas, tres por escala, todas **UINT8 cuantizadas** (hay que pedir
-  `FLOAT32` al armar `OutputVStreamParams` o desceder con scale/zero-point):
+  `FLOAT32` al armar `OutputVStreamParams` o descuantizar con scale/zero-point):
 
 | Escala | stride | Cajas (2 anchors x 4) | Scores (2 anchors) | Puntos (2 anchors x 10) |
 |---|---|---|---|---|
