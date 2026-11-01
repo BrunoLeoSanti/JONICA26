@@ -18,3 +18,5 @@ pygame>=2.5
 
 # Solo para el modo felicidad (emocion de cada cara, en la CPU):
 onnxruntime>=1.20
+
+# Solo para el modo felicidad: opencv (en la Pi viene de apt, python3-opencv).

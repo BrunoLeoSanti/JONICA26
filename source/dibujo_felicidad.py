@@ -85,28 +85,37 @@ def dibujar(
 
     `caras` trae cada caja junto a su nivel (0-4). Una cara sin nivel, o una
     persona sin cara, se dibuja sin carita: es lo que se vio y nada mas.
+
+    Se dibuja con OpenCV sobre la copia y no con Pillow: Pillow obliga a pasar
+    el cuadro entero a imagen y volver (dos copias de ~4 MB por cuadro) y esos
+    ~12 ms de CPU en Python eran lo que limitaba los FPS del video.
     """
+    import cv2  # import diferido, como el resto de las dependencias del video
+
     alto, ancho = frame.shape[:2]
-    imagen = Image.fromarray(frame.copy())
-    d = ImageDraw.Draw(imagen)
+    imagen = frame.copy()
     grosor = max(ancho // 400, 2)
 
     for x1, y1, x2, y2 in personas:
-        d.rectangle([x1 * ancho, y1 * alto, x2 * ancho, y2 * alto], outline=COLOR_PERSONA, width=grosor)
+        cv2.rectangle(imagen, (int(x1 * ancho), int(y1 * alto)),
+                      (int(x2 * ancho), int(y2 * alto)), COLOR_PERSONA, grosor)
 
     for (x1, y1, x2, y2), nivel in caras:
-        px1, py1, px2, py2 = x1 * ancho, y1 * alto, x2 * ancho, y2 * alto
-        d.rectangle([px1, py1, px2, py2], outline=COLOR_CARA, width=grosor)
+        px1, py1, px2, py2 = int(x1 * ancho), int(y1 * alto), int(x2 * ancho), int(y2 * alto)
+        cv2.rectangle(imagen, (px1, py1), (px2, py2), COLOR_CARA, grosor)
         if nivel is None:
             continue
-        carita = caritas[nivel]
-        lado = carita.size[0]
+        carita = np.asarray(caritas[nivel])  # RGBA, chica
+        lado = carita.shape[0]
         # Arriba de la caja; si no entra (cara pegada al borde superior), abajo.
         y = py1 - lado - 2
         if y < 0:
             y = py2 + 2
-        x = min(max(int(px1), 0), max(ancho - lado, 0))
-        y = min(max(int(y), 0), max(alto - lado, 0))
-        imagen.paste(carita, (x, y), carita)
+        x = min(max(px1, 0), max(ancho - lado, 0))
+        y = min(max(y, 0), max(alto - lado, 0))
+        zona = imagen[y : y + lado, x : x + lado]
+        h, w = zona.shape[:2]
+        alfa = carita[:h, :w, 3:4].astype(np.float32) / 255.0
+        zona[:] = (carita[:h, :w, :3] * alfa + zona * (1.0 - alfa)).astype(np.uint8)
 
-    return np.array(imagen)
+    return imagen

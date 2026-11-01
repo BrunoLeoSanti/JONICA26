@@ -98,7 +98,8 @@ HILOS_EMOCION = 2      # nucleos de onnxruntime; los otros quedan para video
 # escala sin costo de CPU. Las cajas son normalizadas, asi que no se afectan.
 RESOLUCION_STREAM_FELICIDAD = (1280, 960)
 # FPS pedidos a la camara en el modo felicidad. Medido en la Pi con yolov8n +
-# scrfd_500m: a 30 se sostienen 30 FPS de inferencia y de video con la CPU al
-# 30%; a 40 y a 60 la inferencia sube a ~34 pero el video baja a ~27 (el dibujo
-# y el JPEG compiten por el GIL). Para pasar de 30 hay que abaratar el dibujo.
-FPS_CAMARA_FELICIDAD = 30
+# scrfd_500m: con el dibujo de Pillow, subir la camara sobre 30 no servia (el
+# video bajaba a ~27 porque dibujo y JPEG competian por el GIL). Con el dibujo
+# en OpenCV (~1 ms por cuadro en vez de ~12) sale ~39 FPS de inferencia y de
+# video con la CPU al 35%; ahora el tope lo pone el Hailo con los dos modelos.
+FPS_CAMARA_FELICIDAD = 60
