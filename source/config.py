@@ -61,3 +61,29 @@ CALIDAD_JPEG = 80
 
 # --- Loop ---------------------------------------------------------------------
 PAUSA_LOOP = 0.05  # segundos; evita saturar la CPU en el bucle principal
+
+# --- Modo felicidad -----------------------------------------------------------
+# Programa aparte (deteccion_felicidad_stream.py): personas, caras y una carita
+# por cara segun cuan feliz se ve. No usa GPIO ni toca el Arduino.
+RUTA_HEF_PERSONAS = RAIZ / "model" / "personas_yolov8.hef"
+RUTA_HEF_CARAS = RAIZ / "model" / "caras_scrfd.hef"
+RUTA_ONNX_EMOCION = RAIZ / "model" / "emocion_hsemotion.onnx"
+
+# Indice de la clase "person" en las 80 de COCO.
+INDICE_PERSONA_COCO = 0
+UMBRAL_PERSONA = 0.4
+UMBRAL_CARA = 0.5
+
+# Cortes de la valencia (-1 triste .. 1 feliz) que separan las 5 caritas.
+# Son valores iniciales: se ajustan midiendo el modelo con tools/medir_valencia.py.
+CORTES_VALENCIA = (-0.5, -0.1, 0.2, 0.5)
+
+# Cuantos cuadros se promedian para que la carita no parpadee.
+VENTANA_SUAVIZADO = 5
+# Superposicion minima entre dos cuadros para decir "es la misma cara".
+IOU_SEGUIMIENTO = 0.3
+# Cuadros seguidos sin ver una cara antes de olvidar su id.
+CUADROS_PERDIDOS_MAX = 10
+# Tope de caras a las que se les calcula la emocion por cuadro: la emocion corre
+# en la CPU y con una multitud frenaria el video.
+MAX_CARAS_EVALUADAS = 6
