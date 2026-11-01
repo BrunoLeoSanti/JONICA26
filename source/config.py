@@ -92,3 +92,8 @@ MAX_CARAS_EVALUADAS = 6
 # calienta hasta frenarse.
 PAUSA_EMOCION = 0.15   # segundos entre evaluaciones
 HILOS_EMOCION = 2      # nucleos de onnxruntime; los otros quedan para video
+# Resolucion del video del modo felicidad. Mas chica que RESOLUCION_STREAM porque
+# el JPEG lo comprime la CPU: a 1640x1232 tarda ~37 ms por cuadro y a 1280x960
+# ~20 ms. El sensor sigue en MODO_SENSOR (campo completo); el ISP de la camara
+# escala sin costo de CPU. Las cajas son normalizadas, asi que no se afectan.
+RESOLUCION_STREAM_FELICIDAD = (1280, 960)

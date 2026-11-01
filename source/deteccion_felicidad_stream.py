@@ -54,7 +54,7 @@ def main() -> None:
             # la camara no cuesta CPU; hacerlo con numpy sobre cada cuadro de
             # 1640x1232 si, y cajas y video coinciden sin transformar nada.
             transform=Transform(hflip=config.ROTAR_PREVIEW_180, vflip=config.ROTAR_PREVIEW_180),
-            main={"format": config.FORMATO_CAMARA, "size": config.RESOLUCION_STREAM},
+            main={"format": config.FORMATO_CAMARA, "size": config.RESOLUCION_STREAM_FELICIDAD},
             lores={"format": config.FORMATO_CAMARA, "size": config.RESOLUCION},
             sensor={"output_size": config.MODO_SENSOR},
             controls={"FrameRate": config.FPS_CAMARA},
@@ -150,12 +150,12 @@ def main() -> None:
     servidor = crear_servidor(ultimo, config.PUERTO_STREAM)
     threading.Thread(target=servidor.serve_forever, daemon=True).start()
 
-    caritas = crear_caritas(max(int(config.RESOLUCION_STREAM[1] * 0.07), 32))
+    caritas = crear_caritas(max(int(config.RESOLUCION_STREAM_FELICIDAD[1] * 0.07), 32))
 
     try:
         with SesionHailo() as sesion:
             estimador = EstimadorEmocion()
-            ancho, alto = config.RESOLUCION_STREAM
+            ancho, alto = config.RESOLUCION_STREAM_FELICIDAD
             print("Modelos cargados: personas + caras en el Hailo, emocion en la CPU", flush=True)
             print(f"Video {ancho}x{alto} en http://bumblebee.local:{config.PUERTO_STREAM}", flush=True)
 
