@@ -123,8 +123,11 @@ def main() -> None:
                     recorte = recortar_cara(grande, cajas[i])
                     if recorte is None:
                         continue
+                    # La inferencia (37 ms) va afuera del candado: adentro, el hilo
+                    # del Hailo esperaria para asignar ids y bajaria el video.
+                    crudo = estimador.valencia(recorte)
                     with candado:
-                        v = seguidor.suavizar(ids[i], estimador.valencia(recorte))
+                        v = seguidor.suavizar(ids[i], crudo)
                     valencias[ids[i]] = v
                     niveles[ids[i]] = nivel_de_valencia(v)
                 estado["niveles"], estado["valencias"] = niveles, valencias
@@ -144,54 +147,67 @@ def main() -> None:
             print("Modelos cargados: personas + caras en el Hailo, emocion en la CPU", flush=True)
             print(f"Video {ancho}x{alto} en http://bumblebee.local:{config.PUERTO_STREAM}", flush=True)
 
-            threading.Thread(target=hilo_captura, daemon=True).start()
-            threading.Thread(target=hilo_hailo, args=(sesion,), daemon=True).start()
-            threading.Thread(target=hilo_emocion, args=(estimador,), daemon=True).start()
+            hilos = [
+                threading.Thread(target=hilo_captura, daemon=True),
+                threading.Thread(target=hilo_hailo, args=(sesion,), daemon=True),
+                threading.Thread(target=hilo_emocion, args=(estimador,), daemon=True),
+            ]
+            for hilo in hilos:
+                hilo.start()
 
-            fps_inf = fps_video = 0.0
-            cuenta_inf = cuenta_video = videos = 0
-            t_fps = time.time()
-            anterior = None
-            while True:
-                ahora = time.time()
-                if ahora - t_fps >= 5:
-                    fps_inf = (estado["inferencias"] - cuenta_inf) / (ahora - t_fps)
-                    fps_video = (videos - cuenta_video) / (ahora - t_fps)
-                    cuenta_inf, cuenta_video, t_fps = estado["inferencias"], videos, ahora
-                    print(f"Hailo {fps_inf:.1f} FPS | video {fps_video:.1f} FPS", flush=True)
+            try:
+                fps_inf = fps_video = 0.0
+                cuenta_inf = cuenta_video = videos = 0
+                t_fps = time.time()
+                anterior = None
+                while True:
+                    ahora = time.time()
+                    if ahora - t_fps >= 5:
+                        fps_inf = (estado["inferencias"] - cuenta_inf) / (ahora - t_fps)
+                        fps_video = (videos - cuenta_video) / (ahora - t_fps)
+                        cuenta_inf, cuenta_video, t_fps = estado["inferencias"], videos, ahora
+                        print(f"Hailo {fps_inf:.1f} FPS | video {fps_video:.1f} FPS", flush=True)
 
-                deteccion = estado["deteccion"]
-                if deteccion is None or deteccion is anterior:
-                    time.sleep(0.002)
-                    continue
-                anterior = deteccion
+                    deteccion = estado["deteccion"]
+                    if deteccion is None or deteccion is anterior:
+                        time.sleep(0.002)
+                        continue
+                    anterior = deteccion
 
-                grande, personas, cajas, ids = deteccion
-                niveles, valencias = estado["niveles"], estado["valencias"]
-                imagen = dibujar(
-                    grande, personas, [(c, niveles.get(i)) for c, i in zip(cajas, ids)], caritas
-                )
-                escala = imagen.shape[0] / 640
-                grosor = max(2, round(2 * escala))
-                if mostrar_valencia:
-                    for c, i in zip(cajas, ids):
-                        if i in valencias:
-                            cv2.putText(imagen, f"{valencias[i]:+.2f}",
-                                        (int(c[0] * imagen.shape[1]), int(c[3] * imagen.shape[0] + 24 * escala)),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.7 * escala, (255, 255, 255), grosor)
-                cv2.putText(imagen, f"Hailo {fps_inf:.0f} FPS | video {fps_video:.0f} FPS | "
-                                    f"{len(personas)} personas, {len(cajas)} caras",
-                            (int(12 * escala), int(34 * escala)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7 * escala, (255, 255, 255), grosor)
-                ultimo.publicar(simplejpeg.encode_jpeg(
-                    imagen, quality=config.CALIDAD_JPEG, colorspace="RGB"))
-                videos += 1
+                    grande, personas, cajas, ids = deteccion
+                    niveles, valencias = estado["niveles"], estado["valencias"]
+                    imagen = dibujar(
+                        grande, personas, [(c, niveles.get(i)) for c, i in zip(cajas, ids)], caritas
+                    )
+                    escala = imagen.shape[0] / 640
+                    grosor = max(2, round(2 * escala))
+                    if mostrar_valencia:
+                        for c, i in zip(cajas, ids):
+                            if i in valencias:
+                                cv2.putText(imagen, f"{valencias[i]:+.2f}",
+                                            (int(c[0] * imagen.shape[1]), int(c[3] * imagen.shape[0] + 24 * escala)),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.7 * escala, (255, 255, 255), grosor)
+                    cv2.putText(imagen, f"Hailo {fps_inf:.0f} FPS | video {fps_video:.0f} FPS | "
+                                        f"{len(personas)} personas, {len(cajas)} caras",
+                                (int(12 * escala), int(34 * escala)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7 * escala, (255, 255, 255), grosor)
+                    ultimo.publicar(simplejpeg.encode_jpeg(
+                        imagen, quality=config.CALIDAD_JPEG, colorspace="RGB"))
+                    videos += 1
+            finally:
+                # Los hilos tienen que soltar el Hailo antes de que la sesion se
+                # cierre; si no, uno puede quedar a mitad de una inferencia sobre
+                # un stream que ya se libero.
+                corriendo.clear()
+                for hilo in hilos:
+                    hilo.join(timeout=2)
 
     except KeyboardInterrupt:
         print("\nInterrumpido por el usuario.")
     finally:
         corriendo.clear()
         servidor.shutdown()
+        servidor.server_close()
         picam2.stop()
         print("Programa finalizado, camara detenida.")
 

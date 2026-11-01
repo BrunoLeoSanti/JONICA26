@@ -109,3 +109,14 @@ def test_persona_de_cara_elige_la_mas_chica_que_la_contiene():
 def test_persona_de_cara_sin_persona_devuelve_none():
     assert persona_de_cara((0.8, 0.8, 0.9, 0.9), [(0.0, 0.0, 0.3, 0.3)]) is None
     assert persona_de_cara((0.8, 0.8, 0.9, 0.9), []) is None
+
+
+def test_suavizar_id_ya_olvidado_no_falla():
+    # El hilo de emocion trabaja con ids de un cuadro viejo mientras el del
+    # Hailo sigue avanzando: un id puede haberse olvidado a mitad de camino.
+    seguidor = SeguidorCaras()
+    (id_cara,) = seguidor.asignar([cara(0.3, 0.3)])
+    for _ in range(config.CUADROS_PERDIDOS_MAX + 1):
+        seguidor.asignar([])
+    assert seguidor.suavizar(id_cara, 0.4) == pytest.approx(0.4)
+    assert seguidor.suavizar(id_cara, float("nan")) == 0.0

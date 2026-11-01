@@ -102,8 +102,15 @@ class SeguidorCaras:
         return resultado
 
     def suavizar(self, id_cara: int, valencia: float) -> float:
-        """Promedio de las ultimas valencias de esa cara (ignora los NaN)."""
-        historial = self._historial[id_cara]
+        """Promedio de las ultimas valencias de esa cara (ignora los NaN).
+
+        Si el id ya se olvido (el hilo de emocion trabaja con ids de un cuadro
+        viejo mientras el seguimiento avanza) no hay historial que promediar:
+        se devuelve el valor tal cual, y 0.0 si ni eso sirve.
+        """
+        historial = self._historial.get(id_cara)
+        if historial is None:
+            return 0.0 if math.isnan(valencia) else valencia
         if not math.isnan(valencia):
             historial.append(valencia)
         return sum(historial) / len(historial) if historial else 0.0
