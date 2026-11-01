@@ -64,7 +64,9 @@ def decodificar_scrfd(
             y1 = min(max((cy - arr * stride_y) / alto, 0.0), 1.0)
             x2 = min(max((cx + der * stride_x) / ancho, 0.0), 1.0)
             y2 = min(max((cy + aba * stride_y) / alto, 0.0), 1.0)
-            cajas_crudas.append((float(mapa_scores[fila, col, anchor]), (x1, y1, x2, y2)))
+            cajas_crudas.append(
+                (float(mapa_scores[fila, col, anchor]), (float(x1), float(y1), float(x2), float(y2)))
+            )
 
     # NMS: la misma cara la proponen varios anchors y varias escalas a la vez.
     cajas_crudas.sort(key=lambda par: par[0], reverse=True)
