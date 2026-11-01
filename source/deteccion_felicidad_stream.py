@@ -24,6 +24,7 @@ Uso:
 """
 import sys
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 from queue import Empty, Queue
 
@@ -57,7 +58,7 @@ def main() -> None:
             main={"format": config.FORMATO_CAMARA, "size": config.RESOLUCION_STREAM_FELICIDAD},
             lores={"format": config.FORMATO_CAMARA, "size": config.RESOLUCION},
             sensor={"output_size": config.MODO_SENSOR},
-            controls={"FrameRate": config.FPS_CAMARA},
+            controls={"FrameRate": config.FPS_CAMARA_FELICIDAD},
         )
     )
     picam2.start()
@@ -82,6 +83,8 @@ def main() -> None:
             if not cola_frames.full():
                 cola_frames.put((grande, chica))
 
+    pool = ThreadPoolExecutor(max_workers=1)
+
     def hilo_hailo(sesion: SesionHailo) -> None:
         while corriendo.is_set():
             if cola_frames.empty():
@@ -94,8 +97,11 @@ def main() -> None:
                 continue
             grande, chica = par
             try:
-                personas = sesion.detectar_personas(chica)
+                # Los dos modelos a la vez: el scheduler los alterna en el chip y
+                # asi no se suman las esperas de Python entre uno y otro.
+                pendiente = pool.submit(sesion.detectar_personas, chica)
                 cajas = [c.bbox for c in sesion.detectar_caras(chica)]
+                personas = pendiente.result()
                 with candado:
                     ids = seguidor.asignar(cajas)
                 estado["deteccion"] = (grande, personas, cajas, ids)

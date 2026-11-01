@@ -4,20 +4,20 @@ Todos verificados en la Pi (Hailo-8, HailoRT 4.23.0, firmware 4.23.0) el 1 de no
 
 | Archivo | Qué es | Origen |
 |---|---|---|
-| `model/personas_yolov8.hef` | YOLOv8s COCO, 80 clases, NMS incluido en el chip | Hailo Model Zoo v2.18.0, `hailo8` |
+| `model/personas_yolov8n.hef` | YOLOv8n COCO, 80 clases, NMS incluido en el chip | Hailo Model Zoo v2.18.0, `hailo8` |
 | `model/caras_scrfd.hef` | SCRFD 500m, detector de caras, **sin NMS** | Hailo Model Zoo v2.18.0, `hailo8` |
 | `model/emocion_hsemotion.onnx` | HSEmotion `enet_b0_8_va_mtl` (8 emociones + valencia + activación) | [HSE-asavchenko/face-emotion-recognition](https://github.com/HSE-asavchenko/face-emotion-recognition), Apache-2.0 |
 
 Los `.hef` se bajaron de
 `https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.18.0/hailo8/<modelo>.hef`.
-`yolov8n.hef` (más rápido, menos preciso) y `scrfd_10g.hef` (más preciso)
+`model/personas_yolov8.hef` (YOLOv8s, más preciso pero ~2x más lento: da 25 FPS en vez de 30) y `scrfd_10g.hef` (más preciso)
 también existen ahí por si hace falta cambiar. **`scrfd_2_5g.hef` no está
 disponible** (el servidor responde 403): por eso se empezó con `scrfd_500m`.
 
-## personas_yolov8.hef
+## personas_yolov8n.hef
 
-- Entrada: `yolov8s/input_layer1`, UINT8, NHWC 640x640x3 (RGB).
-- Salida: un tensor `yolov8s/yolov8_nms_postprocess`, FLOAT32, "NMS by class":
+- Entrada: `yolov8n/input_layer1`, UINT8, NHWC 640x640x3 (RGB).
+- Salida: un tensor `yolov8n/yolov8_nms_postprocess`, FLOAT32, "NMS by class":
   80 clases, hasta 100 cajas por clase. El mismo formato que el `.hef` propio,
   así que sirve `parsear_salida_nms` con las 80 etiquetas de COCO.
 - La clase `person` es el índice **0**.

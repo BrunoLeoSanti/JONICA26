@@ -116,7 +116,7 @@ puede compilar modelos para Hailo (ver más abajo).
   sobre las 42 imágenes de prueba. La conversión del modelo está cerrada.
 
 - **Modo felicidad (etapa 1)**, rama `modo-felicidad`: programa aparte que, con
-  la cámara inclinada hacia arriba, detecta personas (YOLOv8s COCO) y caras
+  la cámara inclinada hacia arriba, detecta personas (YOLOv8n COCO) y caras
   (SCRFD 500m) en el Hailo-8 con el scheduler de HailoRT, estima la valencia de
   cada cara con HSEmotion en la CPU y dibuja una carita de 5 niveles pegada a
   cada cara en el stream de `:8000`. Verificado en la Pi sobre una foto real

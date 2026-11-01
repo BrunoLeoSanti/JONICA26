@@ -65,7 +65,7 @@ PAUSA_LOOP = 0.05  # segundos; evita saturar la CPU en el bucle principal
 # --- Modo felicidad -----------------------------------------------------------
 # Programa aparte (deteccion_felicidad_stream.py): personas, caras y una carita
 # por cara segun cuan feliz se ve. No usa GPIO ni toca el Arduino.
-RUTA_HEF_PERSONAS = RAIZ / "model" / "personas_yolov8.hef"
+RUTA_HEF_PERSONAS = RAIZ / "model" / "personas_yolov8n.hef"
 RUTA_HEF_CARAS = RAIZ / "model" / "caras_scrfd.hef"
 RUTA_ONNX_EMOCION = RAIZ / "model" / "emocion_hsemotion.onnx"
 
@@ -97,3 +97,8 @@ HILOS_EMOCION = 2      # nucleos de onnxruntime; los otros quedan para video
 # ~20 ms. El sensor sigue en MODO_SENSOR (campo completo); el ISP de la camara
 # escala sin costo de CPU. Las cajas son normalizadas, asi que no se afectan.
 RESOLUCION_STREAM_FELICIDAD = (1280, 960)
+# FPS pedidos a la camara en el modo felicidad. Medido en la Pi con yolov8n +
+# scrfd_500m: a 30 se sostienen 30 FPS de inferencia y de video con la CPU al
+# 30%; a 40 y a 60 la inferencia sube a ~34 pero el video baja a ~27 (el dibujo
+# y el JPEG compiten por el GIL). Para pasar de 30 hay que abaratar el dibujo.
+FPS_CAMARA_FELICIDAD = 30
