@@ -90,9 +90,10 @@ MAX_CARAS_EVALUADAS = 6
 # Pausa entre evaluaciones de emocion. Sin pausa el hilo se come la CPU entera y
 # la Pi se calienta hasta frenarse; con 0.15 s la carita tardaba ~1 s en
 # reaccionar (la ventana de suavizado son 5 mediciones). Con una cara en cuadro,
-# 0.03 s dio ~29 FPS y 86 C, y 0.08 s ~37 FPS: 0.06 es un punto medio. Sin caras
-# la emocion no corre y el video llega a ~39 FPS.
-PAUSA_EMOCION = 0.06   # segundos entre evaluaciones
+# 0.03 s da ~29 FPS y ~0.3 s de reaccion, pero la Pi llega a 86 C sin ventilador;
+# 0.06 s es un punto medio y 0.08 s ~37 FPS. Elegido 0.03 s: prioriza la reaccion.
+# Sin caras la emocion no corre y el video llega a ~39 FPS.
+PAUSA_EMOCION = 0.03   # segundos entre evaluaciones
 HILOS_EMOCION = 2      # nucleos de onnxruntime; los otros quedan para video
 # Resolucion del video del modo felicidad. Mas chica que RESOLUCION_STREAM porque
 # el JPEG lo comprime la CPU: a 1640x1232 tarda ~37 ms por cuadro y a 1280x960
