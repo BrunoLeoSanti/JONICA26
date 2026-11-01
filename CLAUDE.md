@@ -1,7 +1,7 @@
 # JONICA26 — contexto del proyecto
 
 Documento de contexto para retomar el trabajo sin historia previa.
-Última actualización: **12 de octubre de 2026**.
+Última actualización: **1 de noviembre de 2026**.
 
 ---
 
@@ -97,7 +97,7 @@ puede compilar modelos para Hailo (ver más abajo).
 
 - Repo creado con estructura, documentación y README.
 - Código de la Pi migrado a Pi 5 + HailoRT.
-- 19 tests pasando (lógica pura, corren en cualquier máquina).
+- 62 tests pasando (lógica pura, corren en cualquier máquina).
 - **Raspberry 100 % provisionada y verificada**: `hailo-all` 5.1.1,
   `hailort` 4.23.0, `/dev/hailo0` presente, `hailortcli` reporta `HAILO8`,
   PCIe en Gen 3, firmware actualizado, cámara funcionando.
@@ -115,8 +115,22 @@ puede compilar modelos para Hailo (ver más abajo).
   acepta, y `tools/verificar_hef.py` da **recall 100 %, precisión 100 %**
   sobre las 42 imágenes de prueba. La conversión del modelo está cerrada.
 
+- **Modo felicidad (etapa 1)**, rama `modo-felicidad`: programa aparte que, con
+  la cámara inclinada hacia arriba, detecta personas (YOLOv8s COCO) y caras
+  (SCRFD 500m) en el Hailo-8 con el scheduler de HailoRT, estima la valencia de
+  cada cara con HSEmotion en la CPU y dibuja una carita de 5 niveles pegada a
+  cada cara en el stream de `:8000`. Verificado en la Pi sobre una foto real
+  (4 personas, 3 caras, niveles coherentes); sin caras en vivo da 18 FPS.
+  Diseño: `docs/superpowers/specs/2026-11-01-muneco-y-modo-felicidad-design.md`.
+
 ### Pendiente
 
+- **Modo felicidad, prueba en vivo**: apuntar la cámara a personas, calibrar
+  `CORTES_VALENCIA` en `config.py` con `--valencia`, medir FPS con 1 y 3 caras
+  y confirmar que se ve en OBS.
+- **Muñeco en pista (etapa 2)**: agregar la clase `muneco` al YOLO propio
+  (reentrenar junto con `pareysemaforo-3`, dataset manual) y tratarlo como un
+  PARE más. Ver "Trampas conocidas" #9 sobre cómo frena el Arduino.
 - Probar con la cámara en vivo (`source/deteccion_hailo_preview.py`).
 - Pruebas en pista; medir FPS, distancia de frenado y tasa de detección.
 - Completar las secciones de resultados y galería del README.
@@ -228,6 +242,28 @@ Las versiones viejas están ocultas; hay que buscarlas con el filtro de archivo
 o escribiendo en el buscador (el desplegable por categoría a veces no las
 muestra).
 
+### 9. El Arduino no frena "mientras el pin esté en alto"
+
+Al ver `PinPare` (D12) en alto, el sketch frena con `delay(4000)` y después
+**ignora el pin 15 s** (`stopflag`). El pin del semáforo (D13) sólo sirve para
+el arranque inicial. O sea que cualquier cosa que reutilice GPIO26 frena 4 s y
+sigue de largo, aunque siga enfrente. Si el muñeco necesita un freno que dure
+mientras está enfrente, hay que tocar el sketch o sumar un cable.
+
+### 10. SCRFD no trae el NMS y sus salidas vienen cuantizadas
+
+Los `.hef` de caras del Model Zoo devuelven 9 tensores crudos (3 escalas x
+cajas, scores y puntos), sin decodificar. `source/caras_scrfd.py` los decodifica;
+la escala se deduce del tamaño del tensor y no de su nombre (`convNN` cambia
+entre `scrfd_500m` y `scrfd_10g`). `scrfd_2_5g.hef` no se puede bajar (403).
+
+### 11. En la Pi, el Python con HailoRT es el del sistema
+
+`/usr/bin/python3` tiene `hailo_platform` y `picamera2`; el venv
+`~/jonica26_env` no. `onnxruntime` se instaló con
+`pip install --user --break-system-packages`. Y cuidado con `pkill -f` por ssh:
+si el patrón aparece en el propio comando, mata la sesión (usar `[d]eteccion`).
+
 ---
 
 ## Estructura del repo
@@ -241,17 +277,24 @@ source/                        Código de la Raspberry Pi 5
   deteccion_hailo.py           Programa principal, headless, para la pista
   deteccion_hailo_preview.py   Con ventana pygame, para el banco de pruebas
   deteccion_hailo_stream.py    Video MJPEG 1640x1232 con las cajas, en :8000 (para OBS)
+  deteccion_felicidad_stream.py  Modo felicidad: personas, caras y carita por cara (--valencia calibra)
+  felicidad.py                 Lógica pura: valencia->nivel, seguidor de caras, suavizado
+  caras_scrfd.py               Decodifica las salidas crudas de SCRFD (+ NMS)
+  hailo_multi.py               Dos modelos en el mismo Hailo con el scheduler
+  emocion.py                   HSEmotion (ONNX, CPU): recorte de cara -> valencia
+  dibujo_felicidad.py          Recorte de caras y dibujo de cajas y caritas
 arduino/lineaydeteccion/       Sketch del PID. NO SE TOCÓ desde 2025.
 model/                         .pt, labels.txt, y el .hef cuando exista
 tools/
   conversion_pt_a_hef.ipynb    Notebook de Colab (.pt -> .hef)
                                Abrir: https://colab.research.google.com/github/BrunoLeoSanti/JONICA26/blob/main/tools/conversion_pt_a_hef.ipynb
+  medir_valencia.py            Valencia del modelo de emoción sobre fotos (calibra los cortes)
   verificar_hef.py             Mide pérdida por cuantización (corre en la Pi)
   registro_energia.py          CSV de voltaje, consumo, temperatura y UPS (corre en la Pi)
   diagnostico_pi.sh            Qué hay instalado en la Pi (solo lectura)
 tests/                         Tests de lógica pura
 hardware/                      Esquemático y diseños 3D
-docs/                          instalacion-pi5, conversion-modelo, migracion-2025
+docs/                          instalacion-pi5, conversion-modelo, migracion-2025, modo-felicidad-modelos
 ```
 
 ### Diseño del código
@@ -263,7 +306,7 @@ Raspberry. La lógica pura (`senales.py`, el parser del NMS) no toca hardware y
 tiene tests.
 
 ```bash
-python3 -m pytest tests/ -v     # 19 tests, corren en cualquier máquina
+python3 -m pytest tests/ -v     # 62 tests, corren en cualquier máquina
 ```
 
 ---

@@ -15,3 +15,6 @@ lgpio>=0.2.2.0      # backend de gpiozero para Pi 5 (el RP1)
 # Solo para deteccion_hailo_preview.py (la version con ventana):
 pillow>=10.0
 pygame>=2.5
+
+# Solo para el modo felicidad (emocion de cada cara, en la CPU):
+onnxruntime>=1.20
