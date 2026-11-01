@@ -13,3 +13,6 @@ calib/
 
 .DS_Store
 .vscode/
+
+# El ONNX de emocion del modo felicidad si se versiona, igual que los .hef.
+!model/emocion_hsemotion.onnx
