@@ -87,3 +87,8 @@ CUADROS_PERDIDOS_MAX = 10
 # Tope de caras a las que se les calcula la emocion por cuadro: la emocion corre
 # en la CPU y con una multitud frenaria el video.
 MAX_CARAS_EVALUADAS = 6
+# La emocion no necesita calcularse en cada cuadro: una expresion no cambia 18
+# veces por segundo, y sin esta pausa el hilo se come la CPU entera y la Pi se
+# calienta hasta frenarse.
+PAUSA_EMOCION = 0.15   # segundos entre evaluaciones
+HILOS_EMOCION = 2      # nucleos de onnxruntime; los otros quedan para video

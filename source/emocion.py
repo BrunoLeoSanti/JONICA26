@@ -36,8 +36,11 @@ class EstimadorEmocion:
         # Import diferido: onnxruntime solo esta en la Pi.
         import onnxruntime
 
+        opciones = onnxruntime.SessionOptions()
+        # Por defecto usa los 4 nucleos y le compite al video y a la captura.
+        opciones.intra_op_num_threads = config.HILOS_EMOCION
         self._sesion = onnxruntime.InferenceSession(
-            str(ruta), providers=["CPUExecutionProvider"]
+            str(ruta), sess_options=opciones, providers=["CPUExecutionProvider"]
         )
 
     def valencia(self, recorte: np.ndarray) -> float:

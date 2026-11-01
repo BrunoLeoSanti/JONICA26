@@ -25,9 +25,7 @@ Uso:
 import sys
 import threading
 import time
-from queue import Queue
-
-import numpy as np
+from queue import Empty, Queue
 
 import config
 from deteccion_hailo_stream import UltimoJpeg, crear_servidor
@@ -41,15 +39,10 @@ def area(caja) -> float:
     return (caja[2] - caja[0]) * (caja[3] - caja[1])
 
 
-def rotar_180(imagen: np.ndarray) -> np.ndarray:
-    # La camara va montada al reves en el chasis; se corrige antes de detectar
-    # para que cajas y video coincidan sin transformar coordenadas.
-    return np.ascontiguousarray(imagen[::-1, ::-1])
-
-
 def main() -> None:
     import cv2
     import simplejpeg
+    from libcamera import Transform
     from picamera2 import Picamera2
 
     mostrar_valencia = "--valencia" in sys.argv
@@ -57,6 +50,10 @@ def main() -> None:
     picam2 = Picamera2()
     picam2.configure(
         picam2.create_video_configuration(
+            # La camara va montada al reves en el chasis. Girarla en el ISP de
+            # la camara no cuesta CPU; hacerlo con numpy sobre cada cuadro de
+            # 1640x1232 si, y cajas y video coinciden sin transformar nada.
+            transform=Transform(hflip=config.ROTAR_PREVIEW_180, vflip=config.ROTAR_PREVIEW_180),
             main={"format": config.FORMATO_CAMARA, "size": config.RESOLUCION_STREAM},
             lores={"format": config.FORMATO_CAMARA, "size": config.RESOLUCION},
             sensor={"output_size": config.MODO_SENSOR},
@@ -73,14 +70,15 @@ def main() -> None:
     candado = threading.Lock()  # el seguidor lo usan el hilo del Hailo y el de emocion
     # deteccion: lo ultimo que vio el Hailo. niveles/valencias: lo ultimo que
     # calculo la emocion, por id de cara.
-    estado = {"deteccion": None, "niveles": {}, "valencias": {}, "inferencias": 0}
+    estado = {"deteccion": None, "niveles": {}, "valencias": {}, "inferencias": 0, "videos": 0}
+    # Cuadros ya dibujados esperando su JPEG. De a uno: si el codificador se
+    # atrasa, se descarta el viejo en vez de acumular retraso.
+    cola_jpeg: "Queue" = Queue(maxsize=1)
 
     def hilo_captura() -> None:
         while corriendo.is_set():
             # Las dos imagenes del mismo pedido, para que cajas e imagen coincidan.
             (grande, chica), _ = picam2.capture_arrays(["main", "lores"])
-            if config.ROTAR_PREVIEW_180:
-                grande, chica = rotar_180(grande), rotar_180(chica)
             if not cola_frames.full():
                 cola_frames.put((grande, chica))
 
@@ -108,9 +106,10 @@ def main() -> None:
     def hilo_emocion(estimador: EstimadorEmocion) -> None:
         visto = None
         while corriendo.is_set():
+            time.sleep(config.PAUSA_EMOCION)
+            # Se lee despues de la pausa para trabajar con lo mas reciente.
             deteccion = estado["deteccion"]
             if deteccion is None or deteccion is visto:
-                time.sleep(0.005)
                 continue
             visto = deteccion
             grande, _, cajas, ids = deteccion
@@ -135,6 +134,19 @@ def main() -> None:
                 print(f"[emocion] error: {error}", flush=True)
 
     ultimo = UltimoJpeg()
+
+    def hilo_jpeg() -> None:
+        # Codificar un cuadro de 1640x1232 cuesta ~37 ms de CPU, mas que dibujarlo.
+        # En su propio hilo se solapa con el dibujo del cuadro siguiente.
+        while corriendo.is_set():
+            try:
+                imagen = cola_jpeg.get(timeout=0.2)
+            except Empty:
+                continue
+            ultimo.publicar(simplejpeg.encode_jpeg(
+                imagen, quality=config.CALIDAD_JPEG, colorspace="RGB"))
+            estado["videos"] += 1
+
     servidor = crear_servidor(ultimo, config.PUERTO_STREAM)
     threading.Thread(target=servidor.serve_forever, daemon=True).start()
 
@@ -151,21 +163,22 @@ def main() -> None:
                 threading.Thread(target=hilo_captura, daemon=True),
                 threading.Thread(target=hilo_hailo, args=(sesion,), daemon=True),
                 threading.Thread(target=hilo_emocion, args=(estimador,), daemon=True),
+                threading.Thread(target=hilo_jpeg, daemon=True),
             ]
             for hilo in hilos:
                 hilo.start()
 
             try:
                 fps_inf = fps_video = 0.0
-                cuenta_inf = cuenta_video = videos = 0
+                cuenta_inf = cuenta_video = 0
                 t_fps = time.time()
                 anterior = None
                 while True:
                     ahora = time.time()
                     if ahora - t_fps >= 5:
                         fps_inf = (estado["inferencias"] - cuenta_inf) / (ahora - t_fps)
-                        fps_video = (videos - cuenta_video) / (ahora - t_fps)
-                        cuenta_inf, cuenta_video, t_fps = estado["inferencias"], videos, ahora
+                        fps_video = (estado["videos"] - cuenta_video) / (ahora - t_fps)
+                        cuenta_inf, cuenta_video, t_fps = estado["inferencias"], estado["videos"], ahora
                         print(f"Hailo {fps_inf:.1f} FPS | video {fps_video:.1f} FPS", flush=True)
 
                     deteccion = estado["deteccion"]
@@ -191,9 +204,11 @@ def main() -> None:
                                         f"{len(personas)} personas, {len(cajas)} caras",
                                 (int(12 * escala), int(34 * escala)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7 * escala, (255, 255, 255), grosor)
-                    ultimo.publicar(simplejpeg.encode_jpeg(
-                        imagen, quality=config.CALIDAD_JPEG, colorspace="RGB"))
-                    videos += 1
+                    try:
+                        cola_jpeg.get_nowait()  # el cuadro viejo ya no sirve
+                    except Empty:
+                        pass
+                    cola_jpeg.put(imagen)
             finally:
                 # Los hilos tienen que soltar el Hailo antes de que la sesion se
                 # cierre; si no, uno puede quedar a mitad de una inferencia sobre
