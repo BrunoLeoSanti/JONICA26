@@ -87,10 +87,12 @@ CUADROS_PERDIDOS_MAX = 10
 # Tope de caras a las que se les calcula la emocion por cuadro: la emocion corre
 # en la CPU y con una multitud frenaria el video.
 MAX_CARAS_EVALUADAS = 6
-# La emocion no necesita calcularse en cada cuadro: una expresion no cambia 18
-# veces por segundo, y sin esta pausa el hilo se come la CPU entera y la Pi se
-# calienta hasta frenarse.
-PAUSA_EMOCION = 0.15   # segundos entre evaluaciones
+# Pausa entre evaluaciones de emocion. Sin pausa el hilo se come la CPU entera y
+# la Pi se calienta hasta frenarse; con 0.15 s la carita tardaba ~1 s en
+# reaccionar (la ventana de suavizado son 5 mediciones). Con una cara en cuadro,
+# 0.03 s dio ~29 FPS y 86 C, y 0.08 s ~37 FPS: 0.06 es un punto medio. Sin caras
+# la emocion no corre y el video llega a ~39 FPS.
+PAUSA_EMOCION = 0.06   # segundos entre evaluaciones
 HILOS_EMOCION = 2      # nucleos de onnxruntime; los otros quedan para video
 # Resolucion del video del modo felicidad. Mas chica que RESOLUCION_STREAM porque
 # el JPEG lo comprime la CPU: a 1640x1232 tarda ~37 ms por cuadro y a 1280x960
