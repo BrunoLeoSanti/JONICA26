@@ -1,38 +1,57 @@
-// ruedas chiquitas. ojo que en el medio de 2 sensores nunca puede dar 0 pq sino se va al pingo, x eso baje el umbral.
+// calibrado para ruedas chiquitas
 
 // --- Pines de motores 
-static int PinIN1 = 11; 
-static int PinIN2 = 9;
-static int PinIN3 = 6;
-static int PinIN4 = 3;
+static int PinIN1 = 6; 
+static int PinIN2 = 3;
+static int PinIN3 = 9;
+static int PinIN4 = 11;
 
-// --- Pines de sensores (¿INTERCAMBIAMOS IZQUIERDO Y DERECHO PARA LA PRUEBA?)
-static int Pin_sensor_izq = A2; // El sensor físico izquierdo ahora se lee en el pin A2
-static int Pin_sensor_cen = A1; // El del centro no cambia
-static int Pin_sensor_der = A0; // El sensor físico derecho ahora se lee en el pin A0
-static int Pin_sensor_uder = A4; 
-static int Pin_sensor_uizq = A3; 
-
-static int PinSemaforo = 13;  // Pin que recibe la señal de la Raspberry
+// --- Sensores: 4, centrados. El ultra izquierdo (A4) se saco porque no andaba.
+// De izquierda a derecha: extremo izq, medio izq, medio der, extremo der.
+static int Pin_sensor_eizq = A3;
+static int Pin_sensor_mizq = A2;
+static int Pin_sensor_mder = A1;
+static int Pin_sensor_eder = A0;
+ 
+// --- Pines que vienen de la Raspberry (4 cables + GND)
+// Modo normal:    13 = semaforo verde (arranca), 12 = PARE (frena 5 s), 7 = muñeco (frena 10 s)
+// Modo felicidad: 12 = motor izquierdo, 13 = motor derecho, 7 = reversa (WASD desde la compu)
+static int PinSemaforo = 13;  // GPIO16 de la Raspberry
 bool semaforo_verde = 0, arranque=0;
-static int PinPare = 12;  // Pin que recibe la señal de la Raspberry
+static int PinPare = 12;      // GPIO26 de la Raspberry
 bool senialpare=0, stopflag=0;
 unsigned long tiempo_actual = 0, tiempo_inicio=0, tiempo_pasado=0;
+static int PinMuneco = 7;     // GPIO20 de la Raspberry
+bool senialmuneco=0, munecoflag=0;
+unsigned long tiempo_inicio_muneco=0;
+static int PinModo = 8;       // GPIO21 de la Raspberry. HIGH = modo felicidad
+bool modo_felicidad=0, modo_anterior=0;
+
+int tiempo_pare = 5000;       // ms que frena ante un PARE
+int tiempo_ignorar_pare = 15000; // ms desde el PARE en que no vuelve a frenar, para poder pasar el cartel
+unsigned long tiempo_muneco = 10000; // ms que frena ante el muñeco
+unsigned long tiempo_ignorar_muneco = 15000; // ms despues de volver a arrancar en que no vuelve a frenar por el muñeco
+
+// --- Modo felicidad: arranca despacio y, yendo recto, acelera de a poco
+int vel_min_remoto = 110;     // al arrancar, al girar y al cambiar de sentido
+int vel_max_remoto = 150;     // tope yendo recto
+int paso_remoto = 5;          // cuanto sube cada vez...
+int cada_remoto = 150;        // ...y cada cuantos ms (110 -> 150 en ~1.2 s)
+int vel_remoto = vel_min_remoto;
+bool reversa_anterior = 0;
+unsigned long ultimo_aumento = 0;
 
 
-int digital[5];
-int sensoresanalog[5];
+int digital[4];
+int sensoresanalog[4];
 long int sumap, suma, pos, poslast, posicion;
 
 // --- UMBRAL DE SENSIBILIDAD ---
 int UMBRAL = 400;
-int umbralmedio=200; 
-
 
 float KP=0.5;
 float KD=0.3;
-float KI=0.01;   // probar 0.01
-
+float KI=0.01;
 
 /// datos para la integral
 int error1=0;
@@ -58,15 +77,37 @@ void setup() {
   pinMode(PinIN2, OUTPUT);
   pinMode(PinIN3, OUTPUT);
   pinMode(PinIN4, OUTPUT);
-  pinMode(PinSemaforo, INPUT_PULLUP);
-  pinMode(PinPare, INPUT_PULLUP);
+  // Sin PULLUP: con pullup, si el programa de la Raspberry se corta los pines
+  // quedan sueltos y se leen en HIGH, y eso en modo felicidad es "los dos
+  // motores a fondo". Sin pullup manda el pull-down de la Raspberry: todo en LOW.
+  pinMode(PinSemaforo, INPUT);
+  pinMode(PinPare, INPUT);
+  pinMode(PinMuneco, INPUT);
+  pinMode(PinModo, INPUT);
 
-  Serial.println("--- Inicio de Depuración (Pines Cruzados) ---");
+  Serial.println("--- Inicio de Depuración ---");
 }
 
 
 
 void loop() {
+
+  modo_felicidad = digitalRead(PinModo);
+  if (modo_felicidad != modo_anterior){
+    // Al cambiar de modo se frena y se arranca de cero: al volver al modo
+    // normal espera otra vez el semaforo verde.
+    motores(0,0);
+    arranque=0;
+    stopflag=0;
+    munecoflag=0;
+    vel_remoto = vel_min_remoto;
+    modo_anterior = modo_felicidad;
+  }
+
+  if (modo_felicidad==1){
+    manejo_remoto();
+    return;
+  }
 
   if (arranque==0){
     semaforo_verde = digitalRead(PinSemaforo);  // HIGH si la Raspberry manda señal
@@ -85,16 +126,30 @@ void loop() {
 
   if(senialpare==1 && stopflag==0){
     motores(0,0);
-    delay(4000);
+    delay(tiempo_pare);
     tiempo_inicio=tiempo_actual;
     stopflag=1;
   }
 
   if(stopflag==1){
     tiempo_pasado = tiempo_actual - tiempo_inicio;
-      if(tiempo_pasado >= 15000){
+      if(tiempo_pasado >= tiempo_ignorar_pare){
         stopflag=0;
       }
+  }
+
+  // Como el PARE, pero el tiempo de ignorar se cuenta desde que vuelve a
+  // arrancar, no desde que lo vio: si no, con 10 s frenado casi no lo pasaria.
+  senialmuneco = digitalRead(PinMuneco);
+  if(senialmuneco==1 && munecoflag==0){
+    motores(0,0);
+    delay(tiempo_muneco);
+    tiempo_inicio_muneco=millis();
+    munecoflag=1;
+  }
+
+  if(munecoflag==1 && millis() - tiempo_inicio_muneco >= tiempo_ignorar_muneco){
+    munecoflag=0;
   }
 
   Serial.print(posicion);
@@ -104,8 +159,8 @@ void loop() {
   */
   Serial.println();
 
-  Serial.print("                                 Valores[ui,I,C,D,ud]:    ");
-  for (int i=0; i<5; i++){
+  Serial.print("                                 Valores[ei,mi,md,ed]:    ");
+  for (int i=0; i<4; i++){
     Serial.print(sensoresanalog[i]);
     Serial.print("\t");
   }
@@ -113,6 +168,32 @@ void loop() {
 
   //Serial.print("       semaforo verde, arranque, senialpare, stopflag   "); Serial.print(semaforo_verde); Serial.print(arranque); Serial.print(senialpare); Serial.print(stopflag);
   
+}
+
+// Modo felicidad: cada pin prende un motor y el del muñeco los pone en reversa.
+// W = los dos, S = los dos en reversa, A = solo el derecho, D = solo el izquierdo.
+void manejo_remoto(){
+  bool motor_izq = digitalRead(PinPare);
+  bool motor_der = digitalRead(PinSemaforo);
+  bool reversa = digitalRead(PinMuneco);
+
+  // Recto (los dos motores, mismo sentido) acelera de a poco hasta el tope.
+  // Girando, quieto o al cambiar de sentido vuelve a la minima.
+  if(motor_izq && motor_der && reversa == reversa_anterior){
+    if(millis() - ultimo_aumento >= cada_remoto && vel_remoto < vel_max_remoto){
+      vel_remoto += paso_remoto;
+      if(vel_remoto > vel_max_remoto) vel_remoto = vel_max_remoto;
+      ultimo_aumento = millis();
+    }
+  }
+  else{
+    vel_remoto = vel_min_remoto;
+    ultimo_aumento = millis();
+  }
+  reversa_anterior = reversa;
+
+  int vel = reversa ? -vel_remoto : vel_remoto;
+  motores(motor_izq ? vel : 0, motor_der ? vel : 0);
 }
 
 void motores(int izq, int der){//0 hasta 255    0 hasta -255
@@ -174,7 +255,7 @@ void PID(){
   int diferencial = (proporcional*KP) + (derivativo*KD) + (integral*KI);
 
   // --- Control de velocidad según si va recto o en curva ---
-  if (abs(proporcional) < 60) {  // probar menor a 110 para que no desacelere en la parte recta
+  if (abs(proporcional) < 70) {  // con 4 sensores, uno solo de los del medio da 67: sigue contando como recto
     // casi centrado en la línea
     recto_counter++;
     if (recto_counter > 3 && vel_base < vel_max) { 
@@ -202,28 +283,38 @@ void PID(){
 
 
 int lectura(void){
-  int val_izq = analogRead(Pin_sensor_izq);
-  int val_cen = analogRead(Pin_sensor_cen);
-  int val_der = analogRead(Pin_sensor_der);
-  int val_uder = analogRead(Pin_sensor_uder);
-  int val_uizq = analogRead(Pin_sensor_uizq);
+  sensoresanalog[0] = analogRead(Pin_sensor_eizq);
+  sensoresanalog[1] = analogRead(Pin_sensor_mizq);
+  sensoresanalog[2] = analogRead(Pin_sensor_mder);
+  sensoresanalog[3] = analogRead(Pin_sensor_eder);
 
-  sensoresanalog[0] = val_uizq; sensoresanalog[1] = val_izq; sensoresanalog[2] = val_cen; sensoresanalog[3] = val_der; sensoresanalog[4] = val_uder;
+  // Los del medio con umbral bajo y los extremos con UMBRAL, como antes.
+  digital[0] = sensoresanalog[0] > UMBRAL;
+  digital[1] = sensoresanalog[1] > 120;
+  digital[2] = sensoresanalog[2] > 120;
+  digital[3] = sensoresanalog[3] > UMBRAL;
 
-  bool negro_izq = val_izq > 120;
-  bool negro_cen = val_cen > 120;
-  bool negro_der = val_der > 120;
-  bool negro_uder = val_uder > UMBRAL;
-  bool negro_uizq = val_uizq > UMBRAL;
+  // Misma escala que con 5 sensores (0 a 400, centro en 200) para no tener
+  // que recalibrar el PID: los 4 sensores quedan repartidos en ese rango.
+  // Linea entre los dos del medio = 200.
+  sumap=400*digital[0]+267*digital[1]+133*digital[2]+0*digital[3];
+  suma=digital[0]+digital[1]+digital[2]+digital[3];
+  if(suma>0)
+    pos=(sumap/suma);
+  else
+    pos=poslast;  // antes dividia por cero; los casos de linea perdida van abajo
 
-  digital[0] = negro_uizq; digital[1] = negro_izq; digital[2] = negro_cen; digital[3] = negro_der; digital[4] = negro_uder;
-  sumap=400*digital[0]+300*digital[1]+200*digital[2]+100*digital[3]+0*digital[4];
-  suma=digital[0]+digital[1]+digital[2]+digital[3]+digital[4];
-  pos=(sumap/suma);
-  
-  
-  if ((digital[0]==1 && digital[1]==0 && (digital[2]+digital[3]+digital[4])>0) || (digital[4]==1 && digital[3]==0 && (digital[2]+digital[1]+digital[0])>0) || (digital[0]==1 && digital[1]==1 && digital[2]==0 && (digital[3] + digital[4])>0) || (digital[4]==1 && digital[3]==1 && digital[2]==0 && (digital[1] + digital[0])>0) )
-    {pos=poslast; // ignorar medicion pues se esta pisando una de las líneas externas al circuito.
+  // Sensores prendidos con uno apagado en el medio (ej. 1,0,1,0): se esta
+  // pisando una de las lineas externas al circuito, ignorar la medicion.
+  int primero=-1, ultimo=-1;
+  for (int i=0; i<4; i++){
+    if (digital[i]==1){
+      if (primero<0) primero=i;
+      ultimo=i;
+    }
+  }
+  if (suma>0 && (ultimo-primero+1) != suma)
+    {pos=poslast;
     Serial.print("     linea externa pisada   ");
     }
   if(poslast<=60 && suma==0){
