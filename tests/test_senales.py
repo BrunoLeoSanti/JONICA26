@@ -71,6 +71,33 @@ def test_pare_por_debajo_del_umbral_no_dispara():
     assert c.actualizar([det("PARE", 0.29)], ahora=0.0).pare is False
 
 
+# --- Muneco: se engancha como el PARE, pero por su propia duracion -----------
+
+def test_muneco_se_mantiene_durante_su_duracion():
+    c = ControlSenales(duracion_muneco=10.0)
+    assert c.actualizar([det("muneco", 0.9)], ahora=100.0).muneco is True
+    assert c.actualizar([], ahora=109.9).muneco is True
+    assert c.actualizar([], ahora=110.0).muneco is False
+
+
+def test_muneco_no_toca_pare_ni_go():
+    c = ControlSenales()
+    s = c.actualizar([det("muneco", 0.9)], ahora=0.0)
+    assert s.pare is False and s.go is False
+
+
+def test_pare_y_muneco_tienen_timers_independientes():
+    c = ControlSenales(duracion_pare=5.0, duracion_muneco=10.0)
+    c.actualizar([det("PARE", 0.9), det("muneco", 0.9)], ahora=0.0)
+    s = c.actualizar([], ahora=6.0)
+    assert s.pare is False and s.muneco is True
+
+
+def test_muneco_por_debajo_del_umbral_no_dispara():
+    c = ControlSenales(umbral_muneco=0.4)
+    assert c.actualizar([det("muneco", 0.39)], ahora=0.0).muneco is False
+
+
 # --- Varios -------------------------------------------------------------------
 
 def test_nombres_de_clase_sin_distinguir_mayusculas():
@@ -95,4 +122,4 @@ def test_clase_desconocida_se_ignora():
 def test_sin_detecciones_todo_apagado():
     c = ControlSenales()
     s = c.actualizar([], ahora=0.0)
-    assert s.pare is False and s.go is False
+    assert s.pare is False and s.go is False and s.muneco is False

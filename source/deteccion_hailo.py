@@ -72,7 +72,8 @@ def main() -> None:
         with DetectorHailo() as detector, SalidasRobot() as salidas:
             print(f"Modelo cargado: {detector.ruta_hef}")
             print(f"Clases: {', '.join(detector.etiquetas)}")
-            print(f"Pines -> PARE: GPIO{config.STOP_PIN}  GO: GPIO{config.GO_PIN}")
+            print(f"Pines -> PARE: GPIO{config.STOP_PIN}  GO: GPIO{config.GO_PIN}  "
+                  f"MUNECO: GPIO{config.MUNECO_PIN}  MODO: GPIO{config.MODO_PIN} (bajo = pista)")
             print("Listo. Ctrl+C para terminar.")
 
             threading.Thread(target=hilo_captura, daemon=True).start()
@@ -80,7 +81,7 @@ def main() -> None:
                 target=hilo_inferencia, args=(detector,), daemon=True
             ).start()
 
-            pare_anterior = False
+            pare_anterior = muneco_anterior = False
             while True:
                 salida = control.actualizar(estado["detecciones"], time.time())
                 salidas.aplicar(salida)
@@ -92,6 +93,11 @@ def main() -> None:
                 elif pare_anterior and not salida.pare:
                     print("Fin del PARE -> se reanuda la deteccion")
                 pare_anterior = salida.pare
+
+                if salida.muneco and not muneco_anterior:
+                    print("Muneco detectado -> frenando "
+                          f"{config.DURACION_MUNECO:.0f}s")
+                muneco_anterior = salida.muneco
 
                 time.sleep(config.PAUSA_LOOP)
 

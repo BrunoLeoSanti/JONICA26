@@ -24,22 +24,46 @@ class Deteccion:
 
 @dataclass(frozen=True)
 class EstadoSalidas:
-    """Que tiene que valer cada pin en este instante."""
+    """Que tiene que valer cada pin en este instante (modo pista)."""
     pare: bool
     go: bool
+    muneco: bool = False
+
+
+class Enganche:
+    """Un pin que, al dispararse, queda activo una duracion fija.
+
+    Solo dispara en el flanco: volver a ver la senal mientras ya esta activo no
+    extiende el tiempo.
+    """
+
+    def __init__(self, duracion: float) -> None:
+        self.duracion = duracion
+        self._inicio: Optional[float] = None
+
+    @property
+    def activo(self) -> bool:
+        return self._inicio is not None
+
+    def actualizar(self, disparo: bool, ahora: float) -> bool:
+        if disparo and self._inicio is None:
+            self._inicio = ahora
+        if self._inicio is not None and ahora - self._inicio >= self.duracion:
+            self._inicio = None
+        return self.activo
 
 
 class ControlSenales:
-    """Decide el estado de los pines PARE y GO a partir de las detecciones.
+    """Decide el estado de los pines PARE, GO y MUNECO a partir de las detecciones.
 
-    Las dos senales se comportan distinto, y es a proposito:
+    Las senales se comportan distinto, y es a proposito:
 
     - El semaforo verde es *instantaneo*: el pin sigue a la deteccion. Mientras
       se vea el verde el robot arranca; si deja de verse, se apaga.
-    - El PARE se *engancha*: apenas se detecta, el pin queda activo una
-      duracion fija aunque el cartel salga de cuadro. Si no fuera asi el robot
-      dejaria de ver el cartel al acercarse y saldria disparando antes de
-      terminar de frenar.
+    - El PARE y el muneco se *enganchan*: apenas se detectan, el pin queda
+      activo una duracion fija aunque salgan de cuadro. Si no fuera asi el robot
+      dejaria de verlos al acercarse y saldria disparando antes de terminar de
+      frenar.
     """
 
     def __init__(
@@ -47,17 +71,23 @@ class ControlSenales:
         duracion_pare: float = config.DURACION_PARE,
         umbral_pare: float = config.UMBRAL_PARE,
         umbral_verde: float = config.UMBRAL_VERDE,
+        duracion_muneco: float = config.DURACION_MUNECO,
+        umbral_muneco: float = config.UMBRAL_MUNECO,
     ) -> None:
-        self.duracion_pare = duracion_pare
         self.umbral_pare = umbral_pare
         self.umbral_verde = umbral_verde
+        self.umbral_muneco = umbral_muneco
 
-        self._pare_activo = False
-        self._pare_inicio: Optional[float] = None
+        self._pare = Enganche(duracion_pare)
+        self._muneco = Enganche(duracion_muneco)
 
     @property
     def pare_activo(self) -> bool:
-        return self._pare_activo
+        return self._pare.activo
+
+    @property
+    def muneco_activo(self) -> bool:
+        return self._muneco.activo
 
     def actualizar(
         self, detecciones: Optional[Iterable[Deteccion]], ahora: float
@@ -69,26 +99,14 @@ class ControlSenales:
         """
         dets: Sequence[Deteccion] = list(detecciones) if detecciones else []
 
-        ve_pare = any(
-            d.nombre.lower() == config.CLASE_PARE.lower()
-            and d.confianza > self.umbral_pare
-            for d in dets
+        def ve(clase: str, umbral: float) -> bool:
+            return any(
+                d.nombre.lower() == clase.lower() and d.confianza > umbral
+                for d in dets
+            )
+
+        return EstadoSalidas(
+            pare=self._pare.actualizar(ve(config.CLASE_PARE, self.umbral_pare), ahora),
+            go=ve(config.CLASE_VERDE, self.umbral_verde),
+            muneco=self._muneco.actualizar(ve(config.CLASE_MUNECO, self.umbral_muneco), ahora),
         )
-        ve_verde = any(
-            d.nombre.lower() == config.CLASE_VERDE.lower()
-            and d.confianza > self.umbral_verde
-            for d in dets
-        )
-
-        # PARE: solo dispara en el flanco, no mientras ya esta activo. Volver a
-        # ver el cartel a mitad de la parada no extiende el tiempo.
-        if ve_pare and not self._pare_activo:
-            self._pare_activo = True
-            self._pare_inicio = ahora
-
-        if self._pare_activo and self._pare_inicio is not None:
-            if ahora - self._pare_inicio >= self.duracion_pare:
-                self._pare_activo = False
-                self._pare_inicio = None
-
-        return EstadoSalidas(pare=self._pare_activo, go=ve_verde)

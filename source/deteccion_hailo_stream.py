@@ -18,11 +18,17 @@ instalar nada.
 Encima del video se muestran los FPS de inferencia y de video, para ver si el
 streaming le esta robando tiempo a la deteccion.
 
+Con --fotos ademas guarda cada INTERVALO_FOTOS segundos la imagen que recibe el
+Hailo, para armar el dataset del muneco (ver CARPETA_DATASET en config.py).
+
 Uso:
     python3 source/deteccion_hailo_stream.py
+    python3 source/deteccion_hailo_stream.py --fotos
 """
+import sys
 import threading
 import time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from queue import Queue
 
@@ -76,7 +82,8 @@ def crear_servidor(ultimo: UltimoJpeg, puerto: int) -> ThreadingHTTPServer:
                 self.end_headers()
                 self.wfile.write(PAGINA)
                 return
-            if self.path != "/stream":
+            # Sin el "?t=..." que agrega la pagina de robot.py para reconectar.
+            if self.path.split("?")[0] != "/stream":
                 self.send_error(404)
                 return
 
@@ -152,7 +159,7 @@ def main() -> None:
     picam2.start()
 
     cola_frames: "Queue" = Queue(maxsize=2)
-    estado = {"detecciones": None, "ultimo_frame": None, "inferencias": 0}
+    estado = {"detecciones": None, "ultimo_frame": None, "ultima_chica": None, "inferencias": 0}
     corriendo = threading.Event()
     corriendo.set()
 
@@ -177,6 +184,7 @@ def main() -> None:
             try:
                 estado["detecciones"] = detector.detectar(chica)
                 estado["ultimo_frame"] = grande
+                estado["ultima_chica"] = chica
                 estado["inferencias"] += 1
             except Exception as error:  # no matar el robot por un frame malo
                 print(f"[inferencia] error: {error}", flush=True)
@@ -187,12 +195,24 @@ def main() -> None:
 
     control = ControlSenales()
 
+    carpeta_fotos = None
+    if "--fotos" in sys.argv:
+        sesion = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        carpeta_fotos = config.CARPETA_DATASET / sesion
+        carpeta_fotos.mkdir(parents=True, exist_ok=True)
+    fotos = 0
+    t_foto = 0.0
+
     try:
         with DetectorHailo() as detector, SalidasRobot() as salidas:
             print(f"Modelo cargado: {detector.ruta_hef}", flush=True)
             ancho, alto = config.RESOLUCION_STREAM
             print(f"Video {ancho}x{alto} en http://bumblebee.local:{config.PUERTO_STREAM}",
                   flush=True)
+
+            if carpeta_fotos:
+                print(f"Guardando una foto cada {config.INTERVALO_FOTOS:g} s en {carpeta_fotos}",
+                      flush=True)
 
             threading.Thread(target=hilo_captura, daemon=True).start()
             threading.Thread(
@@ -217,7 +237,17 @@ def main() -> None:
                     fps_inf = (estado["inferencias"] - cuenta_inf) / (ahora - t_fps)
                     fps_video = (videos - cuenta_video) / (ahora - t_fps)
                     cuenta_inf, cuenta_video, t_fps = estado["inferencias"], videos, ahora
-                    print(f"Hailo {fps_inf:.1f} FPS | video {fps_video:.1f} FPS", flush=True)
+                    print(f"Hailo {fps_inf:.1f} FPS | video {fps_video:.1f} FPS"
+                          + (f" | {fotos} fotos" if carpeta_fotos else ""), flush=True)
+
+                chica = estado["ultima_chica"]
+                if carpeta_fotos and chica is not None and ahora - t_foto >= config.INTERVALO_FOTOS:
+                    # El nombre lleva la sesion: al juntar varias en Roboflow no se pisan.
+                    nombre = carpeta_fotos / f"{carpeta_fotos.name}_{fotos:04d}.jpg"
+                    nombre.write_bytes(simplejpeg.encode_jpeg(
+                        chica, quality=config.CALIDAD_FOTOS, colorspace="RGB"))
+                    fotos += 1
+                    t_foto = ahora
 
                 frame = estado["ultimo_frame"]
                 if frame is None or frame is frame_anterior:
@@ -236,6 +266,8 @@ def main() -> None:
         corriendo.clear()
         servidor.shutdown()
         picam2.stop()
+        if carpeta_fotos:
+            print(f"{fotos} fotos en {carpeta_fotos}")
         print("Programa finalizado, camara detenida y GPIO en bajo.")
 
 

@@ -8,6 +8,7 @@ por el mismo servidor MJPEG del stream de pista, en http://bumblebee.local:8000
 
 Es un programa aparte del de pista: no usa GPIO ni habla con el Arduino, y como
 comparte camara y chip con el programa de pista, no pueden correr a la vez.
+robot.py los alterna con la tecla 2, y en este modo maneja los motores con WASD.
 
 Tres hilos, porque la emocion en la CPU es mucho mas lenta que el Hailo y no
 tiene que frenar ni el video ni las cajas:

@@ -6,11 +6,18 @@ buscar numeros sueltos repartidos por el codigo.
 from pathlib import Path
 
 # --- Pines GPIO (numeracion BCM) ---------------------------------------------
-# Contrato con el Arduino. Estos dos pines son la unica comunicacion entre la
-# Raspberry y el control de motores, y NO cambiaron respecto de 2025: por eso
-# el sketch .ino sigue sirviendo sin modificaciones.
-STOP_PIN = 26   # GPIO26 -> pin fisico 37 -> PinPare 12 del Arduino
-GO_PIN = 16     # GPIO16 -> pin fisico 36 -> PinSemaforo 13 del Arduino
+# Contrato con el Arduino: estos cuatro pines son la unica comunicacion entre la
+# Raspberry y el control de motores. PARE y GO son los de 2025; MUNECO y MODO
+# se sumaron con el modo felicidad, y van al lado (fisicos 38 y 40, con GND en
+# el 39) para que los cuatro cables salgan juntos.
+#
+# MODO elige que significan los otros (lo maneja robot.py, tecla 2):
+#   LOW  (pista):     STOP = frena 5 s, GO = arranca, MUNECO = frena 10 s
+#   HIGH (felicidad): STOP = motor izquierdo, GO = motor derecho, MUNECO = reversa
+STOP_PIN = 26    # GPIO26 -> pin fisico 37 -> PinPare 12 del Arduino
+GO_PIN = 16      # GPIO16 -> pin fisico 36 -> PinSemaforo 13 del Arduino
+MUNECO_PIN = 20  # GPIO20 -> pin fisico 38 -> PinMuneco 7 del Arduino
+MODO_PIN = 21    # GPIO21 -> pin fisico 40 -> PinModo 8 del Arduino
 
 # --- Modelo -------------------------------------------------------------------
 RAIZ = Path(__file__).resolve().parents[1]
@@ -18,6 +25,9 @@ RUTA_HEF = RAIZ / "model" / "yolov8npareysemaforo.hef"
 
 CLASE_PARE = "PARE"
 CLASE_VERDE = "semaforoverde"
+# Todavia no esta en el modelo (etapa 2: reentrenar con el muneco). Mientras
+# tanto el pin MUNECO queda siempre en bajo.
+CLASE_MUNECO = "muneco"
 
 # El orden importa: es el orden de clases con el que se entreno el modelo y con
 # el que se compilo el .hef. Coincide con model/labels.txt.
@@ -28,8 +38,12 @@ ETIQUETAS = [CLASE_PARE, CLASE_VERDE]
 UMBRAL_PARE = 0.3
 UMBRAL_VERDE = 0.4
 
-# Cuanto tiempo se mantiene activo el pin de PARE una vez disparado.
-DURACION_PARE = 5.0  # segundos
+UMBRAL_MUNECO = 0.4
+
+# Cuanto tiempo se mantiene activo cada pin una vez disparado. Coinciden con
+# lo que frena el Arduino (tiempo_pare y tiempo_muneco en el sketch).
+DURACION_PARE = 5.0     # segundos
+DURACION_MUNECO = 10.0  # segundos
 
 # --- Camara -------------------------------------------------------------------
 # El modelo espera 640x640, asi que la camara se configura directo a esa medida
@@ -64,7 +78,8 @@ PAUSA_LOOP = 0.05  # segundos; evita saturar la CPU en el bucle principal
 
 # --- Modo felicidad -----------------------------------------------------------
 # Programa aparte (deteccion_felicidad_stream.py): personas, caras y una carita
-# por cara segun cuan feliz se ve. No usa GPIO ni toca el Arduino.
+# por cara segun cuan feliz se ve. No usa GPIO: en este modo los motores los
+# maneja robot.py con WASD.
 RUTA_HEF_PERSONAS = RAIZ / "model" / "personas_yolov8n.hef"
 RUTA_HEF_CARAS = RAIZ / "model" / "caras_scrfd.hef"
 RUTA_ONNX_EMOCION = RAIZ / "model" / "emocion_hsemotion.onnx"
@@ -106,3 +121,23 @@ RESOLUCION_STREAM_FELICIDAD = (1280, 960)
 # en OpenCV (~1 ms por cuadro en vez de ~12) sale ~39 FPS de inferencia y de
 # video con la CPU al 35%; ahora el tope lo pone el Hailo con los dos modelos.
 FPS_CAMARA_FELICIDAD = 60
+
+# --- Fotos para el dataset del muneco ----------------------------------------
+# deteccion_hailo_stream.py --fotos (o robot.py --fotos) guarda, mientras anda
+# normal, la imagen de 640x640 que recibe el Hailo: el modelo se entrena con lo
+# mismo que despues ve en la pista. Una carpeta por sesion.
+CARPETA_DATASET = Path.home() / "dataset_muneco"
+INTERVALO_FOTOS = 1.0  # segundos; mas seguido salen fotos casi iguales
+CALIDAD_FOTOS = 95     # JPEG; alta, porque es para entrenar
+
+# --- robot.py: cambio de modo y manejo con WASD -------------------------------
+# Pagina de control: http://bumblebee.local:PUERTO_CONTROL. El video sigue en
+# PUERTO_STREAM, que es lo que carga OBS.
+PUERTO_CONTROL = 8080
+# Cuanto se espera a que un programa termine al cambiar de modo antes de matarlo.
+ESPERA_CIERRE = 10.0  # segundos
+
+# Si la pagina deja de mandar teclas por este tiempo, se apagan los motores. La
+# pagina las repite cada 100 ms mientras haya una apretada: si se cae el WiFi o
+# se cierra la pestana con la W apretada, el robot no sigue de largo.
+TIEMPO_SIN_TECLAS = 0.4  # segundos

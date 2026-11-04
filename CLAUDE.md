@@ -30,37 +30,57 @@ Sólo el hardware de inferencia. El comportamiento del robot es el mismo.
 | Acelerador | ninguno | AI HAT+ 26 TOPS (Hailo-8) |
 | Inferencia | CPU, NCNN | chip Hailo dedicado, HEF INT8 |
 | Librería | Ultralytics + NCNN | HailoRT |
-| GPIO | `RPi.GPIO` | `gpiozero` + lgpio |
+| GPIO | `RPi.GPIO` | `lgpio` directo |
 | Arduino | — | **sin cambios** |
 
 ---
 
 ## Arquitectura
 
-Dos cerebros, y entre ellos **exactamente dos cables**:
+Dos cerebros, y entre ellos **cuatro cables** (eran dos hasta el modo
+felicidad):
 
 ```
 RASPBERRY PI 5 + AI HAT+ (Hailo-8)        ARDUINO UNO
   camara -> YOLOv8n en el Hailo             5 sensores IR -> PID -> motores
-       |                                         ^        ^
-       +-- GPIO26 (PARE) ------------------------+        |
-       +-- GPIO16 (GO) ---------------------------------- +
+       +-- GPIO26 (fisico 37) -> D12   PARE: frena 5 s   | felicidad: motor izq
+       +-- GPIO16 (fisico 36) -> D13   GO: arranca       | felicidad: motor der
+       +-- GPIO20 (fisico 38) -> D7    MUNECO: frena 10 s  | felicidad: reversa
+       +-- GPIO21 (fisico 40) -> D8    MODO: bajo = pista, alto = felicidad
+                (GND comun: fisico 39)
 ```
+
+`source/robot.py` coordina todo: corre el programa de pista o el de felicidad
+(no pueden correr a la vez, comparten cámara y Hailo) y los alterna con la
+tecla **2**. Se maneja desde el navegador de la compu en
+`http://bumblebee.local:8080`; el video para OBS sigue en `:8000/stream`.
+
+En modo felicidad el Arduino deja de seguir la linea: PARE/GO prenden un motor
+cada uno y MUNECO los pone en reversa (WASD). La velocidad la pone el Arduino:
+arranca en 110 y, yendo recto, sube de a poco hasta 150. Si la página deja de
+mandar teclas 0.4 s, la Pi apaga los motores.
 
 **La Raspberry ve. El Arduino maneja.** La Pi no sabe nada de motores; el
 Arduino no sabe nada de redes neuronales.
 
-> **Esta frontera de dos pines es la decisión de diseño más importante del
+> **Esta frontera de pocos pines es la decisión de diseño más importante del
 > proyecto.** Es la razón por la que se pudo cambiar computadora, acelerador,
 > formato de modelo y librería de GPIO sin tocar una línea del Arduino ni
 > recalibrar el PID. Cualquier cambio futuro debería respetarla: si algo
 > necesita cruzar más información entre los dos, pensarlo dos veces.
+
+Los pines del Arduino son `INPUT` sin pullup, a propósito: con pullup, si el
+programa de la Pi se corta los pines se leen HIGH, y en modo felicidad eso es
+"los dos motores prendidos".
 
 ### Las dos señales se comportan distinto, a propósito
 
 - **Semáforo verde**: instantáneo. El pin sigue a la detección.
 - **PARE**: se engancha 5 segundos. Si siguiera a la detección, el robot
   dejaría de ver el cartel al acercarse y saldría disparando antes de frenar.
+  El Arduino frena 5 s y después ignora el PARE hasta 15 s, para pasar el cartel.
+- **Muñeco**: se engancha 10 segundos. El Arduino frena 10 s y después lo
+  ignora 15 s contados desde que vuelve a arrancar.
 
 ---
 
@@ -74,7 +94,7 @@ Arduino no sabe nada de redes neuronales.
 | Sistema | Debian 13 **trixie**, 64 bits, kernel 6.18 |
 | Python | 3.13.5 |
 | HailoRT | **4.23.0** |
-| Microcontrolador | Arduino UNO, 5 sensores IR (A0–A4), 2 motores DC |
+| Microcontrolador | Arduino UNO, 4 sensores IR centrados (A3–A0; el A4 se sacó porque no andaba), 2 motores DC |
 
 ### Acceso
 
@@ -168,8 +188,15 @@ Cosas que ya nos costaron tiempo. No repetirlas.
 
 Escribe sobre los registros del SoC vía `/dev/mem`, pero en la Pi 5 los GPIO
 cuelgan del chip **RP1**. **No falla con error**: los pines simplemente nunca
-cambian de estado. El proyecto usa `gpiozero`. (Está instalado `RPi.GPIO` en
+cambian de estado. El proyecto usa `lgpio` directo. (Está instalado `RPi.GPIO` en
 la Pi, pero no se usa.)
+
+**`gpiozero` tampoco sirve para esto:** al cerrar un pin lo deja como entrada
+*sin pull* (flotando) y lo sigue reteniendo hasta que muere el proceso. Con el
+Arduino leyendo sin pullup, flotando = lee cualquier cosa; y `robot.py` no podía
+pasarle los pines al programa de pista ("GPIO busy"). `gpio_control.PinSalida`
+los suelta como entrada con pull-down, verificado con `pinctrl get 16,20,21,26`
+(`ip pd`).
 
 ### 2. El compilador de Hailo no corre en esta máquina
 
@@ -244,11 +271,9 @@ muestra).
 
 ### 9. El Arduino no frena "mientras el pin esté en alto"
 
-Al ver `PinPare` (D12) en alto, el sketch frena con `delay(4000)` y después
+Al ver `PinPare` (D12) en alto, el sketch frena con `delay(5000)` y después
 **ignora el pin 15 s** (`stopflag`). El pin del semáforo (D13) sólo sirve para
-el arranque inicial. O sea que cualquier cosa que reutilice GPIO26 frena 4 s y
-sigue de largo, aunque siga enfrente. Si el muñeco necesita un freno que dure
-mientras está enfrente, hay que tocar el sketch o sumar un cable.
+el arranque inicial. Por eso el muñeco tiene su propio cable (D7) y otra regla.
 
 ### 10. SCRFD no trae el NMS y sus salidas vienen cuantizadas
 
@@ -260,9 +285,12 @@ entre `scrfd_500m` y `scrfd_10g`). `scrfd_2_5g.hef` no se puede bajar (403).
 ### 11. En la Pi, el Python con HailoRT es el del sistema
 
 `/usr/bin/python3` tiene `hailo_platform` y `picamera2`; el venv
-`~/jonica26_env` no. `onnxruntime` se instaló con
-`pip install --user --break-system-packages`. Y cuidado con `pkill -f` por ssh:
+`~/jonica26_env` no. `onnxruntime` y `pytest` se instalaron con
+`pip install --user --break-system-packages`. La copia de trabajo en la Pi es
+`~/jonica_dev` (sin git; se copia desde el Mac), no `~/JONICA26`. Y cuidado con `pkill -f` por ssh:
 si el patrón aparece en el propio comando, mata la sesión (usar `[d]eteccion`).
+Y un proceso lanzado con `&` desde un shell no interactivo hereda SIGINT
+*ignorado*: `robot.py` lo reactiva al arrancar (y toma SIGTERM como Ctrl+C).
 
 ---
 
@@ -273,17 +301,19 @@ source/                        Código de la Raspberry Pi 5
   config.py                    Pines, umbrales, tiempos — TOCAR ACÁ al calibrar
   senales.py                   Máquina de estados PARE/GO (lógica pura, testeable)
   hailo_detector.py            Inferencia sobre el Hailo-8 + parseo del NMS
-  gpio_control.py              Salidas hacia el Arduino (gpiozero)
+  gpio_control.py              Salidas hacia el Arduino (lgpio), 4 pines, modo pista o felicidad
+  manejo_teclado.py            WASD -> motores y reversa, con vencimiento si dejan de llegar teclas
+  robot.py                     Programa completo: alterna pista/felicidad con la tecla 2, pagina en :8080
   deteccion_hailo.py           Programa principal, headless, para la pista
   deteccion_hailo_preview.py   Con ventana pygame, para el banco de pruebas
-  deteccion_hailo_stream.py    Video MJPEG 1640x1232 con las cajas, en :8000 (para OBS)
+  deteccion_hailo_stream.py    Video MJPEG 1640x1232 con las cajas, en :8000 (para OBS); --fotos arma dataset
   deteccion_felicidad_stream.py  Modo felicidad: personas, caras y carita por cara (--valencia calibra)
   felicidad.py                 Lógica pura: valencia->nivel, seguidor de caras, suavizado
   caras_scrfd.py               Decodifica las salidas crudas de SCRFD (+ NMS)
   hailo_multi.py               Dos modelos en el mismo Hailo con el scheduler
   emocion.py                   HSEmotion (ONNX, CPU): recorte de cara -> valencia
   dibujo_felicidad.py          Recorte de caras y dibujo de cajas y caritas
-arduino/lineaydeteccion/       Sketch del PID. NO SE TOCÓ desde 2025.
+arduino/lineaydeteccion/       Sketch del PID, con muñeco y modo felicidad (4 pines)
 model/                         .pt, labels.txt, y el .hef cuando exista
 tools/
   conversion_pt_a_hef.ipynb    Notebook de Colab (.pt -> .hef)
@@ -292,6 +322,7 @@ tools/
   verificar_hef.py             Mide pérdida por cuantización (corre en la Pi)
   registro_energia.py          CSV de voltaje, consumo, temperatura y UPS (corre en la Pi)
   diagnostico_pi.sh            Qué hay instalado en la Pi (solo lectura)
+  fotos_muneco.sh              Modo pista + fotos 640x640 para el dataset del muñeco (corre en la Pi)
 tests/                         Tests de lógica pura
 hardware/                      Esquemático y diseños 3D
 docs/                          instalacion-pi5, conversion-modelo, migracion-2025, modo-felicidad-modelos
@@ -301,7 +332,7 @@ docs/                          instalacion-pi5, conversion-modelo, migracion-202
 
 `config.py` centraliza todo lo que se toca al calibrar. Los módulos que
 necesitan hardware (`hailo_detector`, `gpio_control`) hacen **import diferido**
-de `hailo_platform` y `gpiozero`, así se pueden importar y testear fuera de la
+de `hailo_platform` y `lgpio`, así se pueden importar y testear fuera de la
 Raspberry. La lógica pura (`senales.py`, el parser del NMS) no toca hardware y
 tiene tests.
 
