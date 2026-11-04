@@ -1,18 +1,17 @@
-// ruedas chiquitas. ojo que en el medio de 2 sensores nunca puede dar 0 pq sino se va al pingo, x eso baje el umbral.
+// calibrado para ruedas chiquitas
 
 // --- Pines de motores 
-static int PinIN1 = 11; 
-static int PinIN2 = 9;
-static int PinIN3 = 6;
-static int PinIN4 = 3;
+static int PinIN1 = 6; 
+static int PinIN2 = 3;
+static int PinIN3 = 9;
+static int PinIN4 = 11;
 
-// --- Pines de sensores (¿INTERCAMBIAMOS IZQUIERDO Y DERECHO PARA LA PRUEBA?)
-static int Pin_sensor_izq = A2; // El sensor físico izquierdo ahora se lee en el pin A2
-static int Pin_sensor_cen = A1; // El del centro no cambia
-static int Pin_sensor_der = A0; // El sensor físico derecho ahora se lee en el pin A0
-static int Pin_sensor_uder = A4; 
-static int Pin_sensor_uizq = A3; 
-
+static int Pin_sensor_uizq = A4;
+static int Pin_sensor_izq = A3;
+static int Pin_sensor_cen = A2; 
+static int Pin_sensor_der = A1;
+static int Pin_sensor_uder = A0; 
+ 
 static int PinSemaforo = 13;  // Pin que recibe la señal de la Raspberry
 bool semaforo_verde = 0, arranque=0;
 static int PinPare = 12;  // Pin que recibe la señal de la Raspberry
@@ -26,13 +25,10 @@ long int sumap, suma, pos, poslast, posicion;
 
 // --- UMBRAL DE SENSIBILIDAD ---
 int UMBRAL = 400;
-int umbralmedio=200; 
-
 
 float KP=0.5;
 float KD=0.3;
-float KI=0.01;   // probar 0.01
-
+float KI=0.01;
 
 /// datos para la integral
 int error1=0;
@@ -61,7 +57,7 @@ void setup() {
   pinMode(PinSemaforo, INPUT_PULLUP);
   pinMode(PinPare, INPUT_PULLUP);
 
-  Serial.println("--- Inicio de Depuración (Pines Cruzados) ---");
+  Serial.println("--- Inicio de Depuración ---");
 }
 
 
@@ -85,7 +81,7 @@ void loop() {
 
   if(senialpare==1 && stopflag==0){
     motores(0,0);
-    delay(4000);
+    delay(4000);                                                                      
     tiempo_inicio=tiempo_actual;
     stopflag=1;
   }
