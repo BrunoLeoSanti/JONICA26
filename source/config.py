@@ -40,8 +40,8 @@ UMBRAL_PARE = 0.3
 UMBRAL_VERDE = 0.4
 
 # Con 0.4 el pin del muneco subia con detecciones dudosas; probado en la feria,
-# las del muneco de verdad pasan holgado 0.79.
-UMBRAL_MUNECO = 0.79
+# el muneco de verdad da ~0.93 a 80 cm, y una persona de cerca llego a pasar 0.79.
+UMBRAL_MUNECO = 0.83
 
 # Alto minimo de la caja (fraccion del alto de la imagen) para darle bola a la
 # deteccion: de mas lejos se ve pero no se frena. Medidos en la feria con el
