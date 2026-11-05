@@ -13,9 +13,8 @@ y recien ahi se toman para los motores.
 
 Se maneja desde el navegador de la compu, en http://bumblebee.local:8080: ahi se
 ve el video y se aprietan las teclas (con la pestana enfocada). El video sigue
-saliendo por http://bumblebee.local:8000/stream; cada cambio de modo lo corta
-unos segundos mientras el otro programa carga sus modelos. Para OBS conviene
-http://bumblebee.local:8080/video, que reconecta sola despues de cada cambio.
+saliendo por http://bumblebee.local:8000/stream para OBS; cada cambio de modo lo
+corta unos segundos mientras el otro programa carga sus modelos.
 
 Uso:
     python3 source/robot.py
@@ -88,29 +87,6 @@ setInterval(async () => {
     if (version !== null && e.version !== version) recargar();
     ({modo, cambiando, version} = e);
     mostrar();
-  } catch (_) {}
-}, 1000);
-</script></body></html>""".replace("PUERTO_STREAM", str(config.PUERTO_STREAM)).encode()
-
-# Para la fuente de navegador de OBS: el mismo video, sin texto ni teclas. No
-# carga /stream directo porque al cambiar de modo el video se corta y OBS no
-# reconecta solo; esta pagina si, como la de arriba.
-PAGINA_VIDEO = """<!doctype html><html><head><meta charset="utf-8">
-<title>JONICA26 video</title></head>
-<body style="margin:0;background:#000;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center">
-<img id="v" style="max-width:100%;max-height:100%">
-<script>
-const video = document.getElementById("v");
-const URL_VIDEO = "http://" + location.hostname + ":PUERTO_STREAM/stream";
-function recargar() { video.src = URL_VIDEO + "?t=" + Date.now(); }
-video.onerror = () => setTimeout(recargar, 1000);
-recargar();
-let version = null;
-setInterval(async () => {
-  try {
-    const e = await (await fetch("/estado")).json();
-    if (version !== null && e.version !== version) recargar();
-    version = e.version;
   } catch (_) {}
 }, 1000);
 </script></body></html>""".replace("PUERTO_STREAM", str(config.PUERTO_STREAM)).encode()
@@ -207,8 +183,6 @@ def crear_servidor(robot: Robot, puerto: int) -> ThreadingHTTPServer:
         def do_GET(self) -> None:
             if self.path == "/":
                 self._responder(200, "text/html; charset=utf-8", PAGINA)
-            elif self.path == "/video":
-                self._responder(200, "text/html; charset=utf-8", PAGINA_VIDEO)
             elif self.path == "/estado":
                 estado = {"modo": robot.modo, "version": robot.version,
                           "cambiando": robot.cambiando}

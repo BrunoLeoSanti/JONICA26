@@ -53,10 +53,7 @@ RASPBERRY PI 5 + AI HAT+ (Hailo-8)        ARDUINO UNO
 `source/robot.py` coordina todo: corre el programa de pista o el de felicidad
 (no pueden correr a la vez, comparten cámara y Hailo) y los alterna con la
 tecla **2**. Se maneja desde el navegador de la compu en
-`http://bumblebee.local:8080`; el video sigue en `:8000/stream`. Para YouTube se
-usa `tools/transmitir_youtube.py` en la compu: le pide el video a la Pi una sola
-vez y lo reparte a ffmpeg y al navegador (`http://localhost:8080`). Dos copias
-por el WiFi de la Pi llegaban a los saltos.
+`http://bumblebee.local:8080`; el video para OBS sigue en `:8000/stream`.
 
 En modo felicidad el Arduino deja de seguir la linea: PARE/GO prenden un motor
 cada uno y MUNECO los pone en reversa (WASD). La velocidad la pone el Arduino:
@@ -314,7 +311,7 @@ source/                        Código de la Raspberry Pi 5
   robot.py                     Programa completo: alterna pista/felicidad con la tecla 2, pagina en :8080
   deteccion_hailo.py           Programa principal, headless, para la pista
   deteccion_hailo_preview.py   Con ventana pygame, para el banco de pruebas
-  deteccion_hailo_stream.py    Video MJPEG 960x720 con las cajas, en :8000; --fotos arma dataset
+  deteccion_hailo_stream.py    Video MJPEG 1640x1232 con las cajas, en :8000 (para OBS); --fotos arma dataset
   deteccion_felicidad_stream.py  Modo felicidad: personas, caras y carita por cara (--valencia calibra)
   felicidad.py                 Lógica pura: valencia->nivel, seguidor de caras, suavizado
   caras_scrfd.py               Decodifica las salidas crudas de SCRFD (+ NMS)
@@ -333,7 +330,6 @@ tools/
   registro_energia.py          CSV de voltaje, consumo, temperatura y UPS (corre en la Pi)
   diagnostico_pi.sh            Qué hay instalado en la Pi (solo lectura)
   fotos_muneco.sh              Modo pista + fotos 640x640 para el dataset del muñeco (corre en la Pi)
-  transmitir_youtube.py        Video de la Pi -> YouTube con ffmpeg, desde la compu (Mac o Windows)
 tests/                         Tests de lógica pura
 hardware/                      Esquemático y diseños 3D
 docs/                          instalacion-pi5, conversion-modelo, migracion-2025, modo-felicidad-modelos

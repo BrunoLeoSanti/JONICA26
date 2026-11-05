@@ -66,23 +66,13 @@ PUERTO_STREAM = 8000
 # La camara saca dos imagenes de cada cuadro: esta para el video y otra de
 # RESOLUCION para el Hailo. El sensor imx219 es 4:3; su modo 1920x1080 es un
 # recorte del centro, en cambio 1640x1232 ve el campo completo (promedia de a
-# 4 pixeles) y llega a 81 FPS. Se fuerza ese modo y el ISP lo achica para el
-# video sin recortar.
+# 4 pixeles) y llega a 81 FPS. Se fuerza ese modo y se manda tal cual.
 MODO_SENSOR = (1640, 1232)
-# A 1640x1232 y calidad 80 el MJPEG no entraba por el WiFi de la Pi con el robot
-# andando: se encolaban 3.5 MB y el video llegaba a los saltos. En la red de la
-# feria, llena de gente, pasaban ~5 Mbps: a 960x720 y calidad 50 son ~30 KB por
-# cuadro. YouTube igual lo recomprime.
-RESOLUCION_STREAM = (960, 720)
+RESOLUCION_STREAM = (1640, 1232)
 FPS_CAMARA = 30
 # La Pi 5 no tiene codificador de video por hardware: cada JPEG lo comprime la
 # CPU. Bajar la calidad alivia CPU y WiFi a costa de la imagen.
-CALIDAD_JPEG = 50
-# Lo que el sistema puede encolar por cada cliente del video. Por defecto crece
-# a varios MB: con el WiFi trabado eran segundos de atraso que despues llegaban
-# de golpe. Chico, si la red no da abasto se saltean cuadros y el que llega es
-# siempre el mas nuevo.
-BUFFER_ENVIO_VIDEO = 128 * 1024  # bytes
+CALIDAD_JPEG = 80
 
 # --- Loop ---------------------------------------------------------------------
 PAUSA_LOOP = 0.05  # segundos; evita saturar la CPU en el bucle principal
