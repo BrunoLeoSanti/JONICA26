@@ -299,7 +299,7 @@ entre `scrfd_500m` y `scrfd_10g`). `scrfd_2_5g.hef` no se puede bajar (403).
 `/usr/bin/python3` tiene `hailo_platform` y `picamera2`; el venv
 `~/jonica26_env` no. `onnxruntime` y `pytest` se instalaron con
 `pip install --user --break-system-packages`. La copia de trabajo en la Pi es
-`~/jonica_dev` (sin git; se copia desde el Mac), no `~/JONICA26`. Y cuidado con `pkill -f` por ssh:
+`~/jonica_dev` (clon del repo: se actualiza con `git pull`), no `~/JONICA26`. Y cuidado con `pkill -f` por ssh:
 si el patrón aparece en el propio comando, mata la sesión (usar `[d]eteccion`).
 Y un proceso lanzado con `&` desde un shell no interactivo hereda SIGINT
 *ignorado*: `robot.py` lo reactiva al arrancar (y toma SIGTERM como Ctrl+C).
@@ -340,7 +340,7 @@ tools/
   transmitir_youtube.py        Video de la Pi -> YouTube, desde la compu: una sola copia para ffmpeg y navegador
 tests/                         Tests de lógica pura
 hardware/                      Esquemático y diseños 3D
-docs/                          instalacion-pi5, conversion-modelo, migracion-2025, modo-felicidad-modelos
+docs/                          hardware-y-conexiones, operacion, instalacion-pi5, conversion-modelo, migracion-2025, modo-felicidad-modelos
 ```
 
 ### Diseño del código

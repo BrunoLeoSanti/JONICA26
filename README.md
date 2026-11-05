@@ -79,24 +79,32 @@ conocida para saber hacia qué lado buscarla.
 |---|---|
 | Computadora | Raspberry Pi 5 — 8 GB |
 | Acelerador de IA | Raspberry Pi AI HAT+ 26 TOPS (Hailo-8) |
-| Cámara | Raspberry Pi Camera vía Picamera2 |
+| Cámara | Camera Module v2 (imx219) vía Picamera2 |
 | Microcontrolador | Arduino UNO |
-| Sensores de línea | 5 × infrarrojo reflectivo (A0–A4) |
+| Sensores de línea | 4 × infrarrojo reflectivo (A3–A0) |
 | Motores | 2 × DC con driver puente H |
+| Alimentación | Waveshare UPS HAT (E), 4 × 18650 |
 | Chasis | Diseño propio impreso en 3D — [`hardware/disenos-3d.zip`](hardware/disenos-3d.zip) |
 
 Esquemático de conexiones: [`hardware/esquematico-arduino.png`](hardware/esquematico-arduino.png)
 
 ### Conexión Pi ↔ Arduino
 
-| Raspberry Pi 5 | | Arduino |
-|---|---|---|
-| GPIO26 (pin 37) | → | pin 12 (`PinPare`) |
-| GPIO16 (pin 36) | → | pin 13 (`PinSemaforo`) |
-| GND | → | GND |
+| Raspberry Pi 5 | | Arduino | Modo pista | Modo felicidad |
+|---|---|---|---|---|
+| GPIO26 (pin 37) | → | pin 12 (`PinPare`) | PARE | motor izquierdo |
+| GPIO16 (pin 36) | → | pin 13 (`PinSemaforo`) | semáforo verde | motor derecho |
+| GPIO20 (pin 38) | → | pin 7 (`PinMuneco`) | muñeco | reversa |
+| GPIO21 (pin 40) | → | pin 8 (`PinModo`) | bajo | alto |
+| GND (pin 39) | → | GND | | |
 
 La masa común es obligatoria: sin ella las señales flotan y el Arduino lee
 basura.
+
+Todo el detalle (tiempos, filtros, alimentación, temperatura) está en
+[`docs/hardware-y-conexiones.md`](docs/hardware-y-conexiones.md), y el uso
+diario (arrancar, transmitir, qué hacer si algo falla) en
+[`docs/operacion.md`](docs/operacion.md).
 
 ---
 
