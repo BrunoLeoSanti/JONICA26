@@ -70,13 +70,19 @@ PUERTO_STREAM = 8000
 # video sin recortar.
 MODO_SENSOR = (1640, 1232)
 # A 1640x1232 y calidad 80 el MJPEG no entraba por el WiFi de la Pi con el robot
-# andando: se encolaban 3.5 MB y el video llegaba a los saltos. Asi pesa menos de
-# la mitad, y en YouTube no se nota porque igual lo recomprime a 4.5 Mbps.
-RESOLUCION_STREAM = (1280, 960)
+# andando: se encolaban 3.5 MB y el video llegaba a los saltos. En la red de la
+# feria, llena de gente, pasaban ~5 Mbps: a 960x720 y calidad 50 son ~30 KB por
+# cuadro. YouTube igual lo recomprime.
+RESOLUCION_STREAM = (960, 720)
 FPS_CAMARA = 30
 # La Pi 5 no tiene codificador de video por hardware: cada JPEG lo comprime la
 # CPU. Bajar la calidad alivia CPU y WiFi a costa de la imagen.
-CALIDAD_JPEG = 60
+CALIDAD_JPEG = 50
+# Lo que el sistema puede encolar por cada cliente del video. Por defecto crece
+# a varios MB: con el WiFi trabado eran segundos de atraso que despues llegaban
+# de golpe. Chico, si la red no da abasto se saltean cuadros y el que llega es
+# siempre el mas nuevo.
+BUFFER_ENVIO_VIDEO = 128 * 1024  # bytes
 
 # --- Loop ---------------------------------------------------------------------
 PAUSA_LOOP = 0.05  # segundos; evita saturar la CPU en el bucle principal

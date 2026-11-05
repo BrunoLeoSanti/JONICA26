@@ -25,6 +25,7 @@ Uso:
     python3 source/deteccion_hailo_stream.py
     python3 source/deteccion_hailo_stream.py --fotos
 """
+import socket
 import sys
 import threading
 import time
@@ -87,6 +88,8 @@ def crear_servidor(ultimo: UltimoJpeg, puerto: int) -> ThreadingHTTPServer:
                 self.send_error(404)
                 return
 
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF,
+                                       config.BUFFER_ENVIO_VIDEO)
             self.send_response(200)
             self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=cuadro")
             self.send_header("Cache-Control", "no-cache")

@@ -314,7 +314,7 @@ source/                        Código de la Raspberry Pi 5
   robot.py                     Programa completo: alterna pista/felicidad con la tecla 2, pagina en :8080
   deteccion_hailo.py           Programa principal, headless, para la pista
   deteccion_hailo_preview.py   Con ventana pygame, para el banco de pruebas
-  deteccion_hailo_stream.py    Video MJPEG 1280x960 con las cajas, en :8000; --fotos arma dataset
+  deteccion_hailo_stream.py    Video MJPEG 960x720 con las cajas, en :8000; --fotos arma dataset
   deteccion_felicidad_stream.py  Modo felicidad: personas, caras y carita por cara (--valencia calibra)
   felicidad.py                 Lógica pura: valencia->nivel, seguidor de caras, suavizado
   caras_scrfd.py               Decodifica las salidas crudas de SCRFD (+ NMS)
