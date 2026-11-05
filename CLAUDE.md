@@ -148,13 +148,10 @@ puede compilar modelos para Hailo (ver más abajo).
 - **Modo felicidad, prueba en vivo**: apuntar la cámara a personas, calibrar
   `CORTES_VALENCIA` en `config.py` con `--valencia`, medir FPS con 1 y 3 caras
   y confirmar que se ve en OBS.
-- **Muñeco en pista (etapa 2)**: agregar la clase `muneco` al YOLO propio
-  (reentrenar junto con `pareysemaforo-3`, dataset manual) y tratarlo como un
-  PARE más. Ver "Trampas conocidas" #9 sobre cómo frena el Arduino.
-  El notebook `tools/entrenar_y_convertir.ipynb` hace todo (unir datasets de
-  Roboflow con orden de clases fijo PARE/semaforoverde/muneco, entrenar con
-  `flipud` porque el modelo ve la imagen al revés, convertir y verificar).
-  Falta: juntar las fotos, correrlo, y cambiar `RUTA_HEF` y `ETIQUETAS`.
+- **Muñeco en pista (etapa 2)**: modelo de 3 clases entrenado y compilado el
+  5/11 con `tools/entrenar_y_convertir.ipynb` (recall 100 % en el emulador,
+  ver `model/README.md`); `config.py` ya lo usa. Falta: `verificar_hef.py`
+  en la Pi con `docs/muestras_muneco/` y probarlo en la pista.
 - Probar con la cámara en vivo (`source/deteccion_hailo_preview.py`).
 - Pruebas en pista; medir FPS, distancia de frenado y tasa de detección.
 - Completar las secciones de resultados y galería del README.
@@ -164,10 +161,14 @@ puede compilar modelos para Hailo (ver más abajo).
 
 ## El modelo
 
-YOLOv8n, **2 clases**: `PARE` y `semaforoverde`. Entrada 640×640 RGB.
-Entrenado con Ultralytics 8.2.103 sobre el dataset `pareysemaforo-3` de
-Roboflow. Es **el mismo modelo entrenado que en 2025**; lo único que cambia es
-el formato de ejecución.
+YOLOv8n, **3 clases** en este orden: `PARE`, `semaforoverde`, `muneco`.
+Entrada 640×640 RGB. Entrenado en Colab con Ultralytics 8.2.103 sobre la v5 de
+`deteccion-3o8gk/pareysemaforo-fu6sg` en Roboflow (que suma las fotos del
+muñeco a `pareysemaforo-3`). El de 2025, de 2 clases, queda de respaldo en
+`model/yolov8npareysemaforo.hef`.
+
+El modelo recibe la imagen de la cámara **al revés** (va montada así y en pista
+sólo se endereza el video); por eso se entrena con `flipud`.
 
 ### El pipeline de conversión
 

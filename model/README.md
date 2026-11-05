@@ -2,11 +2,35 @@
 
 | Archivo | Estado |
 |---|---|
-| `yolov8npareysemaforo.pt` | modelo entrenado, heredado de JONICA25 |
-| `yolov8npareysemaforo.hef` | compilado para **Hailo-8**, listo para usar |
-| `labels.txt` | orden de clases, tiene que coincidir con el `.hef` |
+| `yolov8n_pare_semaforo_muneco.hef` | **el que usa el robot**: PARE, semáforo verde y muñeco, Hailo-8 |
+| `yolov8n_pare_semaforo_muneco.pt` | su `.pt`, entrenado en Colab |
+| `yolov8npareysemaforo.pt` | modelo de 2 clases, heredado de JONICA25 |
+| `yolov8npareysemaforo.hef` | su `.hef`, de respaldo |
+| `labels.txt` | orden de clases del modelo en uso, tiene que coincidir con el `.hef` |
 
-## El `.hef` actual
+## El `.hef` con muñeco
+
+Entrenado y compilado el **5 de noviembre de 2026** con
+[`../tools/entrenar_y_convertir.ipynb`](../tools/entrenar_y_convertir.ipynb):
+YOLOv8n desde COCO, Ultralytics 8.2.103, 100 épocas con `flipud=0.5` (el
+modelo recibe la imagen de la cámara al revés), dataset Roboflow
+`deteccion-3o8gk/pareysemaforo-fu6sg` v5 (545 imágenes). DFC 3.33.1 + Model
+Zoo v2.18, target `hailo8`, 432 imágenes de calibración.
+
+| | PARE | semáforo verde | muñeco |
+|---|---|---|---|
+| `.pt` sobre valid (recall) | 100 % | 100 % | 100 % |
+| Emulador del DFC vs `.pt` (recall) | 100 % | 100 % | 100 % |
+
+Precisión del cuantizado contra el `.pt`: 98.6 %. Ojo: valid tiene fotos
+sacadas una por segundo, muy parecidas a las de train; la prueba que vale es
+en la pista. Set de verificación en `docs/muestras_muneco/`:
+
+```bash
+python3 tools/verificar_hef.py --imagenes docs/muestras_muneco/muestras --referencia docs/muestras_muneco/referencia_pt.json
+```
+
+## El `.hef` de 2025 (2 clases)
 
 Compilado el **12 de octubre de 2026** con este stack:
 

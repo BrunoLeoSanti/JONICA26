@@ -21,17 +21,18 @@ MODO_PIN = 21    # GPIO21 -> pin fisico 40 -> PinModo 8 del Arduino
 
 # --- Modelo -------------------------------------------------------------------
 RAIZ = Path(__file__).resolve().parents[1]
-RUTA_HEF = RAIZ / "model" / "yolov8npareysemaforo.hef"
+# Entrenado con el muneco (tools/entrenar_y_convertir.ipynb). El de 2025, sin
+# muneco, sigue en model/yolov8npareysemaforo.hef: para volver a el, cambiar
+# esta ruta y sacar CLASE_MUNECO de ETIQUETAS.
+RUTA_HEF = RAIZ / "model" / "yolov8n_pare_semaforo_muneco.hef"
 
 CLASE_PARE = "PARE"
 CLASE_VERDE = "semaforoverde"
-# Todavia no esta en el modelo (etapa 2: reentrenar con el muneco). Mientras
-# tanto el pin MUNECO queda siempre en bajo.
 CLASE_MUNECO = "muneco"
 
 # El orden importa: es el orden de clases con el que se entreno el modelo y con
 # el que se compilo el .hef. Coincide con model/labels.txt.
-ETIQUETAS = [CLASE_PARE, CLASE_VERDE]
+ETIQUETAS = [CLASE_PARE, CLASE_VERDE, CLASE_MUNECO]
 
 # --- Umbrales de deteccion ----------------------------------------------------
 # Heredados de la version 2025 que funciono en la pista.
