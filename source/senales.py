@@ -22,6 +22,19 @@ class Deteccion:
     bbox: Tuple[float, float, float, float]  # (x1, y1, x2, y2) normalizado 0-1
 
 
+def proporcion_caja(d: Deteccion) -> float:
+    """Alto / ancho de la caja en pixeles reales.
+
+    La caja viene normalizada 0-1 y la imagen es 4:3 (la del Hailo se estira a
+    640x640, pero sale del mismo campo del sensor): sin pasar a pixeles, una
+    caja cuadrada en la realidad daria 0.75.
+    """
+    x1, y1, x2, y2 = d.bbox
+    ancho_sensor, alto_sensor = config.MODO_SENSOR
+    ancho = (x2 - x1) * ancho_sensor
+    return (y2 - y1) * alto_sensor / ancho if ancho > 0 else 0.0
+
+
 @dataclass(frozen=True)
 class EstadoSalidas:
     """Que tiene que valer cada pin en este instante (modo pista)."""
@@ -66,7 +79,9 @@ class ControlSenales:
       frenar.
 
     Ademas cada senal cuenta recien cuando su caja tiene un alto minimo: asi el
-    robot frena a la distancia del cartel y no apenas lo ve a lo lejos.
+    robot frena a la distancia del cartel y no apenas lo ve a lo lejos. Y la del
+    muneco tiene que tener su forma, angosta y alta: si no, una persona de cerca
+    lo dispara.
     """
 
     def __init__(
@@ -79,7 +94,9 @@ class ControlSenales:
         alto_min_pare: float = config.ALTO_MIN_PARE,
         alto_min_verde: float = config.ALTO_MIN_VERDE,
         alto_min_muneco: float = config.ALTO_MIN_MUNECO,
+        proporcion_muneco: Optional[Tuple[float, float]] = config.PROPORCION_MUNECO,
     ) -> None:
+        self.proporcion_muneco = proporcion_muneco
         self.umbral_pare = umbral_pare
         self.umbral_verde = umbral_verde
         self.umbral_muneco = umbral_muneco
@@ -108,15 +125,17 @@ class ControlSenales:
         """
         dets: Sequence[Deteccion] = list(detecciones) if detecciones else []
 
-        def ve(clase: str, umbral: float, alto_min: float) -> bool:
+        def ve(clase: str, umbral: float, alto_min: float, proporcion=None) -> bool:
             return any(
                 d.nombre.lower() == clase.lower() and d.confianza > umbral
                 and d.bbox[3] - d.bbox[1] >= alto_min
+                and (proporcion is None or proporcion[0] <= proporcion_caja(d) <= proporcion[1])
                 for d in dets
             )
 
         pare = ve(config.CLASE_PARE, self.umbral_pare, self.alto_min_pare)
-        muneco = ve(config.CLASE_MUNECO, self.umbral_muneco, self.alto_min_muneco)
+        muneco = ve(config.CLASE_MUNECO, self.umbral_muneco, self.alto_min_muneco,
+                    self.proporcion_muneco)
         return EstadoSalidas(
             pare=self._pare.actualizar(pare, ahora),
             go=ve(config.CLASE_VERDE, self.umbral_verde, self.alto_min_verde),

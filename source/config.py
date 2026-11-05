@@ -51,6 +51,10 @@ UMBRAL_MUNECO = 0.83
 ALTO_MIN_PARE = 0.12
 ALTO_MIN_VERDE = 0.0
 ALTO_MIN_MUNECO = 0.22
+# Proporcion de la caja del muneco, alto / ancho en pixeles reales: parado da
+# ~3.5 (medido en la feria a 80 cm y mas cerca). Una persona de cerca, o una
+# cosa cualquiera, da cajas mucho mas cuadradas y queda afuera.
+PROPORCION_MUNECO = (2.5, 5.0)  # (minima, maxima); None = sin filtro
 
 # Cuanto tiempo se mantiene activo cada pin una vez disparado. Coinciden con
 # lo que frena el Arduino (tiempo_pare y tiempo_muneco en el sketch).

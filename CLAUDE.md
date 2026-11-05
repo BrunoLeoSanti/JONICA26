@@ -124,7 +124,7 @@ puede compilar modelos para Hailo (ver más abajo).
 
 - Repo creado con estructura, documentación y README.
 - Código de la Pi migrado a Pi 5 + HailoRT.
-- 93 tests pasando (lógica pura, corren en cualquier máquina).
+- 98 tests pasando (lógica pura, corren en cualquier máquina).
 - **Raspberry 100 % provisionada y verificada**: `hailo-all` 5.1.1,
   `hailort` 4.23.0, `/dev/hailo0` presente, `hailortcli` reporta `HAILO8`,
   PCIe en Gen 3, firmware actualizado, cámara funcionando.
@@ -352,7 +352,7 @@ Raspberry. La lógica pura (`senales.py`, el parser del NMS) no toca hardware y
 tiene tests.
 
 ```bash
-python3 -m pytest tests/ -v     # 93 tests, corren en cualquier máquina
+python3 -m pytest tests/ -v     # 98 tests, corren en cualquier máquina
 ```
 
 ---

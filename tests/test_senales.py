@@ -8,11 +8,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "source"))
 
-from senales import ControlSenales, Deteccion  # noqa: E402
+from senales import ControlSenales, Deteccion, proporcion_caja  # noqa: E402
 
 
 def det(nombre, conf):
-    return Deteccion(nombre=nombre, confianza=conf, bbox=(0.0, 0.0, 1.0, 1.0))
+    # Caja grande y con forma de muneco (alto/ancho ~4.5 en pixeles), asi pasa
+    # los filtros de tamano y proporcion de cualquier clase.
+    return Deteccion(nombre=nombre, confianza=conf, bbox=(0.45, 0.2, 0.55, 0.8))
 
 
 # --- Semaforo verde: sigue al instante, sin memoria ---------------------------
@@ -128,7 +130,9 @@ def test_sin_detecciones_todo_apagado():
 # --- Alto minimo de la caja: frenar a la distancia del cartel ------------------
 
 def det_alto(nombre, alto, conf=0.9):
-    return Deteccion(nombre=nombre, confianza=conf, bbox=(0.4, 0.3, 0.5, 0.3 + alto))
+    # Ancho elegido para que la caja tenga la proporcion del muneco (3.5).
+    ancho = alto * 1232 / 1640 / 3.5
+    return Deteccion(nombre=nombre, confianza=conf, bbox=(0.4, 0.3, 0.4 + ancho, 0.3 + alto))
 
 
 def test_pare_lejano_no_frena():
@@ -150,3 +154,33 @@ def test_muneco_lejano_no_frena_y_cerca_si():
 def test_alto_minimo_cero_no_filtra():
     c = ControlSenales(alto_min_verde=0.0)
     assert c.actualizar([det_alto("semaforoverde", 0.01)], ahora=0.0).go is True
+
+
+# --- Proporcion de la caja del muneco ------------------------------------------
+
+def test_muneco_medido_en_la_feria_pasa():
+    """La caja de la foto del muneco a ~60 cm: 173 x 622 px."""
+    d = Deteccion("muneco", 0.97, (0.454, 0.272, 0.540, 0.688))
+    assert 3.4 < proporcion_caja(d) < 3.8
+    assert ControlSenales().actualizar([d], ahora=0.0).muneco is True
+
+
+def test_persona_de_cerca_no_dispara_el_muneco():
+    """Cabeza y torso llenando la imagen: caja casi cuadrada."""
+    d = Deteccion("muneco", 0.95, (0.25, 0.0, 0.75, 1.0))
+    assert ControlSenales().actualizar([d], ahora=0.0).muneco is False
+
+
+def test_caja_demasiado_angosta_tampoco():
+    d = Deteccion("muneco", 0.95, (0.48, 0.1, 0.50, 0.9))
+    assert ControlSenales(proporcion_muneco=(2.5, 5.0)).actualizar([d], ahora=0.0).muneco is False
+
+
+def test_sin_filtro_de_proporcion():
+    d = Deteccion("muneco", 0.95, (0.25, 0.0, 0.75, 1.0))
+    assert ControlSenales(proporcion_muneco=None).actualizar([d], ahora=0.0).muneco is True
+
+
+def test_la_proporcion_no_afecta_al_pare():
+    d = Deteccion("PARE", 0.95, (0.25, 0.0, 0.75, 1.0))
+    assert ControlSenales().actualizar([d], ahora=0.0).pare is True
