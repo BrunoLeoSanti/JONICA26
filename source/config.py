@@ -41,6 +41,15 @@ UMBRAL_VERDE = 0.4
 
 UMBRAL_MUNECO = 0.4
 
+# Alto minimo de la caja (fraccion del alto de la imagen) para darle bola a la
+# deteccion: de mas lejos se ve pero no se frena. Medidos en la feria con el
+# robot a ~80 cm: el PARE ocupa 0.13 de alto y el muneco 0.24; un poco menos
+# para no depender de un cuadro exacto. 0 = sin filtro. El semaforo no lleva:
+# solo da el arranque y conviene verlo desde donde sea.
+ALTO_MIN_PARE = 0.12
+ALTO_MIN_VERDE = 0.0
+ALTO_MIN_MUNECO = 0.22
+
 # Cuanto tiempo se mantiene activo cada pin una vez disparado. Coinciden con
 # lo que frena el Arduino (tiempo_pare y tiempo_muneco en el sketch).
 DURACION_PARE = 5.0     # segundos
@@ -142,3 +151,7 @@ ESPERA_CIERRE = 10.0  # segundos
 # pagina las repite cada 100 ms mientras haya una apretada: si se cae el WiFi o
 # se cierra la pestana con la W apretada, el robot no sigue de largo.
 TIEMPO_SIN_TECLAS = 0.4  # segundos
+# Diagonal (W+A, W+D, S+A, S+D): primero gira con una sola rueda este tiempo y
+# despues sigue recto con las dos, en la direccion nueva. Mas tiempo = gira mas;
+# estimado para unos 45 grados, calibrar en el piso.
+TIEMPO_GIRO_DIAGONAL = 0.4  # segundos

@@ -64,6 +64,9 @@ class ControlSenales:
       activo una duracion fija aunque salgan de cuadro. Si no fuera asi el robot
       dejaria de verlos al acercarse y saldria disparando antes de terminar de
       frenar.
+
+    Ademas cada senal cuenta recien cuando su caja tiene un alto minimo: asi el
+    robot frena a la distancia del cartel y no apenas lo ve a lo lejos.
     """
 
     def __init__(
@@ -73,10 +76,16 @@ class ControlSenales:
         umbral_verde: float = config.UMBRAL_VERDE,
         duracion_muneco: float = config.DURACION_MUNECO,
         umbral_muneco: float = config.UMBRAL_MUNECO,
+        alto_min_pare: float = config.ALTO_MIN_PARE,
+        alto_min_verde: float = config.ALTO_MIN_VERDE,
+        alto_min_muneco: float = config.ALTO_MIN_MUNECO,
     ) -> None:
         self.umbral_pare = umbral_pare
         self.umbral_verde = umbral_verde
         self.umbral_muneco = umbral_muneco
+        self.alto_min_pare = alto_min_pare
+        self.alto_min_verde = alto_min_verde
+        self.alto_min_muneco = alto_min_muneco
 
         self._pare = Enganche(duracion_pare)
         self._muneco = Enganche(duracion_muneco)
@@ -99,14 +108,17 @@ class ControlSenales:
         """
         dets: Sequence[Deteccion] = list(detecciones) if detecciones else []
 
-        def ve(clase: str, umbral: float) -> bool:
+        def ve(clase: str, umbral: float, alto_min: float) -> bool:
             return any(
                 d.nombre.lower() == clase.lower() and d.confianza > umbral
+                and d.bbox[3] - d.bbox[1] >= alto_min
                 for d in dets
             )
 
+        pare = ve(config.CLASE_PARE, self.umbral_pare, self.alto_min_pare)
+        muneco = ve(config.CLASE_MUNECO, self.umbral_muneco, self.alto_min_muneco)
         return EstadoSalidas(
-            pare=self._pare.actualizar(ve(config.CLASE_PARE, self.umbral_pare), ahora),
-            go=ve(config.CLASE_VERDE, self.umbral_verde),
-            muneco=self._muneco.actualizar(ve(config.CLASE_MUNECO, self.umbral_muneco), ahora),
+            pare=self._pare.actualizar(pare, ahora),
+            go=ve(config.CLASE_VERDE, self.umbral_verde, self.alto_min_verde),
+            muneco=self._muneco.actualizar(muneco, ahora),
         )

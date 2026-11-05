@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "source"))
 
-from manejo_teclado import QUIETO, ControlTeclado, Motores, motores_de_teclas  # noqa: E402
+from manejo_teclado import QUIETO, ControlTeclado, Motores, es_diagonal, motores_de_teclas  # noqa: E402
 
 
 # --- Teclas -> (motor izquierdo, motor derecho, reversa) ----------------------
@@ -80,3 +80,54 @@ def test_ignora_caracteres_que_no_son_wasd():
     c = ControlTeclado()
     c.recibir("sx\n", ahora=0.0)
     assert c.motores(ahora=0.0) == Motores(True, True, True)
+
+
+# --- Diagonal: primero gira, despues sigue recto -------------------------------
+
+def test_diagonales():
+    assert es_diagonal("wd") and es_diagonal("wa") and es_diagonal("sd") and es_diagonal("sa")
+    assert not es_diagonal("w") and not es_diagonal("d") and not es_diagonal("wad")
+
+
+def test_w_d_primero_gira_a_la_derecha():
+    c = ControlTeclado(tiempo_giro_diagonal=0.4)
+    c.recibir("wd", ahora=10.0)
+    assert c.motores(ahora=10.2) == Motores(True, False, False)
+
+
+def test_w_d_despues_del_giro_va_recto():
+    c = ControlTeclado(tiempo_giro_diagonal=0.4)
+    c.recibir("wd", ahora=10.0)
+    c.recibir("wd", ahora=10.3)  # la pagina repite las teclas
+    assert c.motores(ahora=10.45) == Motores(True, True, False)
+
+
+def test_s_a_gira_y_despues_va_recto_marcha_atras():
+    c = ControlTeclado(tiempo_giro_diagonal=0.4)
+    c.recibir("sa", ahora=10.0)
+    assert c.motores(ahora=10.1) == Motores(False, True, True)
+    c.recibir("sa", ahora=10.3)
+    assert c.motores(ahora=10.5) == Motores(True, True, True)
+
+
+def test_repetir_las_mismas_teclas_no_reinicia_el_giro():
+    c = ControlTeclado(tiempo_giro_diagonal=0.4)
+    for i in range(6):
+        c.recibir("wa", ahora=10.0 + i * 0.1)
+    assert c.motores(ahora=10.5) == Motores(True, True, False)
+
+
+def test_cambiar_de_diagonal_vuelve_a_girar():
+    c = ControlTeclado(tiempo_giro_diagonal=0.4)
+    c.recibir("wd", ahora=10.0)
+    c.recibir("wd", ahora=10.3)
+    assert c.motores(ahora=10.5) == Motores(True, True, False)
+    c.recibir("wa", ahora=10.5)
+    assert c.motores(ahora=10.6) == Motores(False, True, False)
+
+
+def test_d_sola_sigue_girando_sin_enderezar():
+    c = ControlTeclado(tiempo_giro_diagonal=0.4)
+    c.recibir("d", ahora=10.0)
+    c.recibir("d", ahora=10.3)
+    assert c.motores(ahora=10.6) == Motores(True, False, False)

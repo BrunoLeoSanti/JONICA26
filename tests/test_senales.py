@@ -123,3 +123,30 @@ def test_sin_detecciones_todo_apagado():
     c = ControlSenales()
     s = c.actualizar([], ahora=0.0)
     assert s.pare is False and s.go is False and s.muneco is False
+
+
+# --- Alto minimo de la caja: frenar a la distancia del cartel ------------------
+
+def det_alto(nombre, alto, conf=0.9):
+    return Deteccion(nombre=nombre, confianza=conf, bbox=(0.4, 0.3, 0.5, 0.3 + alto))
+
+
+def test_pare_lejano_no_frena():
+    c = ControlSenales(alto_min_pare=0.12)
+    assert c.actualizar([det_alto("PARE", 0.08)], ahora=0.0).pare is False
+
+
+def test_pare_a_la_distancia_justa_frena():
+    c = ControlSenales(alto_min_pare=0.12)
+    assert c.actualizar([det_alto("PARE", 0.13)], ahora=0.0).pare is True
+
+
+def test_muneco_lejano_no_frena_y_cerca_si():
+    c = ControlSenales(alto_min_muneco=0.22)
+    assert c.actualizar([det_alto("muneco", 0.15)], ahora=0.0).muneco is False
+    assert c.actualizar([det_alto("muneco", 0.24)], ahora=0.1).muneco is True
+
+
+def test_alto_minimo_cero_no_filtra():
+    c = ControlSenales(alto_min_verde=0.0)
+    assert c.actualizar([det_alto("semaforoverde", 0.01)], ahora=0.0).go is True
