@@ -244,6 +244,9 @@ def main() -> None:
                 if carpeta_fotos and chica is not None and ahora - t_foto >= config.INTERVALO_FOTOS:
                     # El nombre lleva la sesion: al juntar varias en Roboflow no se pisan.
                     nombre = carpeta_fotos / f"{carpeta_fotos.name}_{fotos:04d}.jpg"
+                    # Derecha, como se ve en el video: la camara va montada al reves.
+                    if config.ROTAR_PREVIEW_180:
+                        chica = np.ascontiguousarray(chica[::-1, ::-1])
                     nombre.write_bytes(simplejpeg.encode_jpeg(
                         chica, quality=config.CALIDAD_FOTOS, colorspace="RGB"))
                     fotos += 1
