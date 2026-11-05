@@ -53,7 +53,10 @@ RASPBERRY PI 5 + AI HAT+ (Hailo-8)        ARDUINO UNO
 `source/robot.py` coordina todo: corre el programa de pista o el de felicidad
 (no pueden correr a la vez, comparten cámara y Hailo) y los alterna con la
 tecla **2**. Se maneja desde el navegador de la compu en
-`http://bumblebee.local:8080`; el video para OBS sigue en `:8000/stream`.
+`http://bumblebee.local:8080`; el video sigue en `:8000/stream`. Para YouTube,
+`tools/transmitir_youtube.py` en la compu pide el video a la Pi una sola vez y lo
+reparte a ffmpeg y al navegador (`http://localhost:8080`): con ffmpeg y el
+navegador pidiendo cada uno su copia, el WiFi de la Pi no da abasto.
 
 En modo felicidad el Arduino deja de seguir la linea: PARE/GO prenden un motor
 cada uno y MUNECO los pone en reversa (WASD). La velocidad la pone el Arduino:
@@ -334,6 +337,7 @@ tools/
   registro_energia.py          CSV de voltaje, consumo, temperatura y UPS (corre en la Pi)
   diagnostico_pi.sh            Qué hay instalado en la Pi (solo lectura)
   fotos_muneco.sh              Modo pista + fotos 640x640 para el dataset del muñeco (corre en la Pi)
+  transmitir_youtube.py        Video de la Pi -> YouTube, desde la compu: una sola copia para ffmpeg y navegador
 tests/                         Tests de lógica pura
 hardware/                      Esquemático y diseños 3D
 docs/                          instalacion-pi5, conversion-modelo, migracion-2025, modo-felicidad-modelos
