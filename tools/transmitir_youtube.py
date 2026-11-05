@@ -26,6 +26,8 @@ Uso:
 """
 import argparse
 import getpass
+import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -178,10 +180,27 @@ def comando_ffmpeg(entrada: str, clave: str) -> list:
     ]
 
 
+def pedir_clave() -> str:
+    # En Windows el campo oculto de getpass no acepta Ctrl+V: en vez de pegar
+    # mete un caracter de control, y la clave llega como "?". Ahi se pide a la
+    # vista; en Mac sigue oculta.
+    pregunta = "Clave de emision de YouTube: "
+    while True:
+        clave = (input(pregunta) if sys.platform == "win32" else getpass.getpass(pregunta)).strip()
+        # Las claves de YouTube son letras, numeros y guiones.
+        if re.fullmatch(r"[A-Za-z0-9-]{8,}", clave):
+            return clave
+        print("Esa clave no parece valida (se pego mal?). Probar de nuevo.", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--pi", default="bumblebee.local", help="nombre o IP de la Pi")
     args = parser.parse_args()
+
+    if shutil.which("ffmpeg") is None:
+        sys.exit("No se encontro ffmpeg. Instalarlo (Mac: brew install ffmpeg; "
+                 "Windows: winget install Gyan.FFmpeg) y abrir otra terminal.")
 
     ultimo = UltimoJpeg()
     origen = f"http://{args.pi}:{config.PUERTO_STREAM}/stream"
@@ -190,7 +209,7 @@ def main() -> None:
                      servidor_control(args.pi, config.PUERTO_CONTROL)):
         threading.Thread(target=servidor.serve_forever, daemon=True).start()
 
-    clave = getpass.getpass("Clave de emision de YouTube: ").strip()
+    clave = pedir_clave()
     print(f"\nPara manejar y ver el video: http://localhost:{config.PUERTO_CONTROL}\n"
           "Ctrl+C para cortar la transmision.\n", flush=True)
     entrada = f"http://127.0.0.1:{config.PUERTO_STREAM}/stream"
