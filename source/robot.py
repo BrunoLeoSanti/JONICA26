@@ -21,6 +21,7 @@ Uso:
     python3 source/robot.py --fotos   # en pista, ademas fotos para el dataset
 """
 import json
+import re
 import signal
 import subprocess
 import sys
@@ -40,6 +41,31 @@ PROGRAMAS = {
     FELICIDAD: Path(__file__).with_name("deteccion_felicidad_stream.py"),
 }
 
+# Que significa cada pin en cada modo, en el orden en que se muestran.
+NOMBRES_PINES = {
+    PISTA: [(config.STOP_PIN, config.CLASE_PARE), (config.GO_PIN, config.CLASE_VERDE),
+            (config.MUNECO_PIN, config.CLASE_MUNECO), (config.MODO_PIN, "MODO")],
+    FELICIDAD: [(config.STOP_PIN, "motor izq"), (config.GO_PIN, "motor der"),
+                (config.MUNECO_PIN, "reversa"), (config.MODO_PIN, "MODO")],
+}
+
+
+def leer_pines(numeros) -> dict:
+    """Nivel real de cada pin, {numero: 0 o 1}; vacio si no se puede leer.
+
+    Con pinctrl y no con lgpio: en modo pista los pines son del programa de
+    deteccion, y lgpio no deja leer un pin tomado por otro proceso. pinctrl lee
+    el registro, asi que muestra lo que de verdad le llega al Arduino.
+    """
+    try:
+        salida = subprocess.run(["pinctrl", "get", ",".join(map(str, numeros))],
+                                capture_output=True, text=True, timeout=1).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return {}
+    # Cada linea es como "16: op dl pd | lo // GPIO16 = output".
+    return {int(n): int(nivel == "hi")
+            for n, nivel in re.findall(r"^\s*(\d+):.*\|\s*(hi|lo)", salida, re.M)}
+
 # La pagina repite las teclas cada 100 ms mientras haya alguna apretada: si
 # dejan de llegar, se apagan los motores (TIEMPO_SIN_TECLAS en config.py). El
 # video se recarga cuando cambia el modo, porque el programa nuevo levanta otro
@@ -49,6 +75,7 @@ PAGINA = """<!doctype html><html><head><meta charset="utf-8">
 <body style="margin:0;background:#000;height:100vh;display:flex;align-items:center;justify-content:center">
 <img id="v" style="max-width:100%;max-height:100%">
 <div id="t" style="position:fixed;bottom:12px;left:12px;color:#fff;font:20px monospace"></div>
+<div id="p" style="position:fixed;top:12px;right:12px;padding:8px 12px;background:rgba(0,0,0,.6);color:#fff;font:20px/1.4 monospace;white-space:pre"></div>
 <script>
 const video = document.getElementById("v");
 const URL_VIDEO = "http://" + location.hostname + ":PUERTO_STREAM/stream";
@@ -81,14 +108,23 @@ addEventListener("keyup", e => {
 addEventListener("blur", () => { apretadas.clear(); mandar(); });
 setInterval(() => { if (apretadas.size) mandar(); }, 100);
 
+// Cada pin con su nombre segun el modo: 1 en verde, 0 en gris, ? si no se leyo.
+function mostrarPines(pines) {
+  document.getElementById("p").innerHTML = pines.map(([nombre, nivel]) =>
+    `<span style="color:${nivel === 1 ? "#3f3" : "#888"}">${nombre.padEnd(14)}${nivel ?? "?"}</span>`
+  ).join("\\n");
+}
+
+// Cada 250 ms y no cada segundo: el semaforo verde y las teclas cambian rapido.
 setInterval(async () => {
   try {
     const e = await (await fetch("/estado")).json();
     if (version !== null && e.version !== version) recargar();
     ({modo, cambiando, version} = e);
     mostrar();
+    mostrarPines(e.pines);
   } catch (_) {}
-}, 1000);
+}, 250);
 </script></body></html>""".replace("PUERTO_STREAM", str(config.PUERTO_STREAM)).encode()
 
 
@@ -184,8 +220,11 @@ def crear_servidor(robot: Robot, puerto: int) -> ThreadingHTTPServer:
             if self.path == "/":
                 self._responder(200, "text/html; charset=utf-8", PAGINA)
             elif self.path == "/estado":
+                nombres = NOMBRES_PINES[robot.modo]
+                niveles = leer_pines([n for n, _ in nombres])
                 estado = {"modo": robot.modo, "version": robot.version,
-                          "cambiando": robot.cambiando}
+                          "cambiando": robot.cambiando,
+                          "pines": [[nombre, niveles.get(n)] for n, nombre in nombres]}
                 self._responder(200, "application/json", json.dumps(estado).encode())
             else:
                 self.send_error(404)
