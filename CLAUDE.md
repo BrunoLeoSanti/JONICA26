@@ -151,6 +151,10 @@ puede compilar modelos para Hailo (ver más abajo).
 - **Muñeco en pista (etapa 2)**: agregar la clase `muneco` al YOLO propio
   (reentrenar junto con `pareysemaforo-3`, dataset manual) y tratarlo como un
   PARE más. Ver "Trampas conocidas" #9 sobre cómo frena el Arduino.
+  El notebook `tools/entrenar_y_convertir.ipynb` hace todo (unir datasets de
+  Roboflow con orden de clases fijo PARE/semaforoverde/muneco, entrenar con
+  `flipud` porque el modelo ve la imagen al revés, convertir y verificar).
+  Falta: juntar las fotos, correrlo, y cambiar `RUTA_HEF` y `ETIQUETAS`.
 - Probar con la cámara en vivo (`source/deteccion_hailo_preview.py`).
 - Pruebas en pista; medir FPS, distancia de frenado y tasa de detección.
 - Completar las secciones de resultados y galería del README.
@@ -318,6 +322,8 @@ model/                         .pt, labels.txt, y el .hef cuando exista
 tools/
   conversion_pt_a_hef.ipynb    Notebook de Colab (.pt -> .hef)
                                Abrir: https://colab.research.google.com/github/BrunoLeoSanti/JONICA26/blob/main/tools/conversion_pt_a_hef.ipynb
+  entrenar_y_convertir.ipynb   Colab (GPU): Roboflow -> entrenar 3 clases con muneco -> .hef verificado
+                               Abrir: https://colab.research.google.com/github/BrunoLeoSanti/JONICA26/blob/main/tools/entrenar_y_convertir.ipynb
   medir_valencia.py            Valencia del modelo de emoción sobre fotos (calibra los cortes)
   verificar_hef.py             Mide pérdida por cuantización (corre en la Pi)
   registro_energia.py          CSV de voltaje, consumo, temperatura y UPS (corre en la Pi)
