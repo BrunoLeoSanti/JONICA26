@@ -20,17 +20,21 @@ static int PinSemaforo = 13;  // GPIO16 de la Raspberry
 bool semaforo_verde = 0, arranque=0;
 static int PinPare = 12;      // GPIO26 de la Raspberry
 bool senialpare=0, stopflag=0;
-unsigned long tiempo_actual = 0, tiempo_inicio=0, tiempo_pasado=0;
+unsigned long tiempo_inicio_pare=0;
 static int PinMuneco = 7;     // GPIO20 de la Raspberry
 bool senialmuneco=0, munecoflag=0;
 unsigned long tiempo_inicio_muneco=0;
 static int PinModo = 8;       // GPIO21 de la Raspberry. HIGH = modo felicidad
 bool modo_felicidad=0, modo_anterior=0;
 
-int tiempo_pare = 5000;       // ms que frena ante un PARE
-int tiempo_ignorar_pare = 15000; // ms desde el PARE en que no vuelve a frenar, para poder pasar el cartel
-unsigned long tiempo_muneco = 10000; // ms que frena ante el muñeco
-unsigned long tiempo_ignorar_muneco = 15000; // ms despues de volver a arrancar en que no vuelve a frenar por el muñeco
+// Todos los tiempos en unsigned long, como millis(): un int del UNO llega
+// hasta 32767 y con mas se desborda.
+// Los de ignorar se cuentan desde que se ve la señal, con el frenado incluido:
+// lo que ignora ya andando es (ignorar - frenado).
+unsigned long tiempo_pare = 5000;            // ms que frena ante un PARE
+unsigned long tiempo_ignorar_pare = 15000;   // 5 s frenado + 10 s andando sin volver a frenar
+unsigned long tiempo_muneco = 10000;         // ms que frena ante el muñeco
+unsigned long tiempo_ignorar_muneco = 25000; // 10 s frenado + 15 s andando sin volver a frenar
 
 // --- Modo felicidad: arranca despacio y, yendo recto, acelera de a poco
 int vel_min_remoto = 110;     // al arrancar, al girar y al cambiar de sentido
@@ -121,33 +125,27 @@ void loop() {
     frenos();
   }
 
+  // PARE y muñeco funcionan igual: al verlo se anota el momento, frena y
+  // despues lo ignora hasta que pasa el tiempo de ignorar, contado desde que
+  // lo vio (el frenado incluido).
   senialpare = digitalRead(PinPare);  // HIGH si la Raspberry manda señal
-  tiempo_actual = millis();
-
   if(senialpare==1 && stopflag==0){
+    tiempo_inicio_pare=millis();
     motores(0,0);
     delay(tiempo_pare);
-    tiempo_inicio=tiempo_actual;
     stopflag=1;
   }
-
-  if(stopflag==1){
-    tiempo_pasado = tiempo_actual - tiempo_inicio;
-      if(tiempo_pasado >= tiempo_ignorar_pare){
-        stopflag=0;
-      }
+  if(stopflag==1 && millis() - tiempo_inicio_pare >= tiempo_ignorar_pare){
+    stopflag=0;
   }
 
-  // Como el PARE, pero el tiempo de ignorar se cuenta desde que vuelve a
-  // arrancar, no desde que lo vio: si no, con 10 s frenado casi no lo pasaria.
   senialmuneco = digitalRead(PinMuneco);
   if(senialmuneco==1 && munecoflag==0){
+    tiempo_inicio_muneco=millis();
     motores(0,0);
     delay(tiempo_muneco);
-    tiempo_inicio_muneco=millis();
     munecoflag=1;
   }
-
   if(munecoflag==1 && millis() - tiempo_inicio_muneco >= tiempo_ignorar_muneco){
     munecoflag=0;
   }
